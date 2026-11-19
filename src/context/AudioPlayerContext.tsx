@@ -21,6 +21,23 @@ export interface PlayableTrack {
 }
 
 type PlayerMode = 'idle' | 'youtube' | 'preview' | 'soundscape';
+export type RepeatMode = 'off' | 'all' | 'one';
+
+function createShuffledOrder(length: number, anchorIndex: number): number[] {
+  const others: number[] = [];
+  for (let i = 0; i < length; i++) {
+    if (i !== anchorIndex) others.push(i);
+  }
+  for (let i = others.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = others[i];
+    others[i] = others[j];
+    others[j] = tmp;
+  }
+  return anchorIndex >= 0 && anchorIndex < length
+    ? [anchorIndex, ...others]
+    : others;
+}
 
 interface AudioPlayerContextValue {
   mode: PlayerMode;
@@ -36,6 +53,10 @@ interface AudioPlayerContextValue {
   currentTime: number;
   duration: number;
   volume: number;
+  shuffle: boolean;
+  repeatMode: RepeatMode;
+  sleepTimerSecondsLeft: number | null;
+  sleepTimerNotice: string | null;
   canPrev: boolean;
   canNext: boolean;
   registerYouTubeContainer: (el: HTMLDivElement | null) => void;
@@ -48,8 +69,12 @@ interface AudioPlayerContextValue {
     genre?: string;
   }) => Promise<void>;
   switchYouTubeCandidate: (index: number) => void;
+  toggleShuffle: () => void;
+  cycleRepeatMode: () => void;
+  setSleepTimerMinutes: (minutes: number | null) => void;
+  clearSleepTimerNotice: () => void;
   togglePlayPause: () => void;
-  nextTrack: () => Promise<void>;
+  nextTrack: (fromAutoEnd?: boolean) => Promise<void>;
   prevTrack: () => Promise<void>;
   seek: (seconds: number) => void;
   setVolume: (vol: number) => void;
@@ -92,12 +117,28 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   const [volume, setVolumeState] = useState(0.75);
   const volumeRef = useRef(0.75);
 
+  const [shuffle, setShuffle] = useState(false);
+  const shuffleRef = useRef(false);
+  const [repeatMode, setRepeatMode] = useState<RepeatMode>('off');
+  const repeatModeRef = useRef<RepeatMode>('off');
+
+  const [sleepTimerSecondsLeft, setSleepTimerSecondsLeft] = useState<
+    number | null
+  >(null);
+  const [sleepTimerNotice, setSleepTimerNotice] = useState<string | null>(null);
+  const sleepIntervalRef = useRef<number | null>(null);
+
   const [queue, setQueue] = useState<PlayableTrack[]>([]);
   const queueRef = useRef<PlayableTrack[]>([]);
   const [queueIndex, setQueueIndex] = useState(-1);
   const queueIndexRef = useRef(-1);
+  const shuffledOrderRef = useRef<number[]>([]);
+  const [shufflePos, setShufflePos] = useState(0);
+  const shufflePosRef = useRef(0);
 
-  const nextTrackRef = useRef<(() => Promise<void>) | null>(null);
+  const nextTrackRef = useRef<((fromAutoEnd?: boolean) => Promise<void>) | null>(
+    null
+  );
 
   const updateMode = useCallback((nextMode: PlayerMode) => {
     modeRef.current = nextMode;
@@ -149,8 +190,63 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     }
   }, [stopYouTubePoll]);
 
+  const clearSleepTimer = useCallback(() => {
+    if (sleepIntervalRef.current !== null) {
+      window.clearInterval(sleepIntervalRef.current);
+      sleepIntervalRef.current = null;
+    }
+    setSleepTimerSecondsLeft(null);
+  }, []);
+
+  const pauseCurrentPlayback = useCallback(() => {
+    if (modeRef.current === 'youtube' && ytPlayerRef.current && ytReadyRef.current) {
+      ytPlayerRef.current.pauseVideo();
+    } else if (modeRef.current === 'preview' && audioRef.current) {
+      audioRef.current.pause();
+    } else if (modeRef.current === 'soundscape') {
+      synthRef.current?.stop();
+    }
+    setIsPlaying(false);
+  }, []);
+
+  const setSleepTimerMinutes = useCallback(
+    (minutes: number | null) => {
+      clearSleepTimer();
+      setSleepTimerNotice(null);
+      if (!minutes || minutes <= 0) return;
+
+      const totalSec = Math.round(minutes * 60);
+      setSleepTimerSecondsLeft(totalSec);
+
+      sleepIntervalRef.current = window.setInterval(() => {
+        setSleepTimerSecondsLeft((prev) => {
+          if (prev === null) return null;
+          if (prev <= 1) {
+            if (sleepIntervalRef.current !== null) {
+              window.clearInterval(sleepIntervalRef.current);
+              sleepIntervalRef.current = null;
+            }
+            pauseCurrentPlayback();
+            setSleepTimerNotice(
+              'Sleep timer selesai — pemutaran dijeda otomatis.'
+            );
+            return null;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    },
+    [clearSleepTimer, pauseCurrentPlayback]
+  );
+
+  const clearSleepTimerNotice = useCallback(() => {
+    setSleepTimerNotice(null);
+  }, []);
+
   const stopAll = useCallback(() => {
     ytRequestIdRef.current += 1;
+    clearSleepTimer();
+    setSleepTimerNotice(null);
     stopPreviewAudio();
     stopSoundscape();
     destroyYouTubePlayer();
@@ -166,7 +262,13 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     setError(null);
     setCurrentTime(0);
     setDuration(30);
-  }, [stopPreviewAudio, stopSoundscape, destroyYouTubePlayer, updateMode]);
+  }, [
+    clearSleepTimer,
+    stopPreviewAudio,
+    stopSoundscape,
+    destroyYouTubePlayer,
+    updateMode,
+  ]);
 
   const startYouTubePoll = useCallback(() => {
     stopYouTubePoll();
@@ -201,7 +303,6 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
 
       const host = ytHostRef.current;
       if (!host) {
-        // Will be picked up as soon as AudioPlayerBar mounts the host element
         return;
       }
 
@@ -211,7 +312,6 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
           return;
         }
 
-        // If another mount completed while awaiting script
         if (ytPlayerRef.current && ytReadyRef.current) {
           ytPlayerRef.current.loadVideoById(videoId);
           pendingVideoIdRef.current = null;
@@ -254,28 +354,20 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
               if (modeRef.current !== 'youtube') return;
               const state = event.data;
               if (state === 1) {
-                // PLAYING
                 setIsPlaying(true);
                 setIsLoading(false);
                 setError(null);
+                setSleepTimerNotice(null);
                 const dur = event.target.getDuration?.() || 0;
                 if (Number.isFinite(dur) && dur > 0) setDuration(dur);
               } else if (state === 2) {
-                // PAUSED
                 setIsPlaying(false);
                 setIsLoading(false);
               } else if (state === 3) {
-                // BUFFERING
                 setIsLoading(true);
               } else if (state === 0) {
-                // ENDED
                 setIsPlaying(false);
-                if (
-                  queueIndexRef.current >= 0 &&
-                  queueIndexRef.current < queueRef.current.length - 1
-                ) {
-                  void nextTrackRef.current?.();
-                }
+                void nextTrackRef.current?.(true);
               }
             },
             onError: () => {
@@ -340,7 +432,10 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
         setDuration(30);
       }
     };
-    const onPlay = () => setIsPlaying(true);
+    const onPlay = () => {
+      setIsPlaying(true);
+      setSleepTimerNotice(null);
+    };
     const onPause = () => setIsPlaying(false);
 
     audio.addEventListener('timeupdate', onTimeUpdate);
@@ -355,9 +450,10 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       audio.removeEventListener('pause', onPause);
       audio.pause();
       synthRef.current?.stop();
+      clearSleepTimer();
       destroyYouTubePlayer();
     };
-  }, [destroyYouTubePlayer]);
+  }, [clearSleepTimer, destroyYouTubePlayer]);
 
   const applyQueue = useCallback(
     (track: PlayableTrack, newQueue?: PlayableTrack[]) => {
@@ -372,13 +468,47 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
         const resolvedIdx = idx >= 0 ? idx : 0;
         queueIndexRef.current = resolvedIdx;
         setQueueIndex(resolvedIdx);
+
+        if (shuffleRef.current) {
+          shuffledOrderRef.current = createShuffledOrder(
+            newQueue.length,
+            resolvedIdx
+          );
+          shufflePosRef.current = 0;
+          setShufflePos(0);
+        }
       }
     },
     []
   );
 
+  const toggleShuffle = useCallback(() => {
+    const next = !shuffleRef.current;
+    shuffleRef.current = next;
+    setShuffle(next);
+    if (next && queueRef.current.length > 0) {
+      const anchor = Math.max(0, queueIndexRef.current);
+      shuffledOrderRef.current = createShuffledOrder(
+        queueRef.current.length,
+        anchor
+      );
+      shufflePosRef.current = 0;
+      setShufflePos(0);
+    }
+  }, []);
+
+  const cycleRepeatMode = useCallback(() => {
+    const curr = repeatModeRef.current;
+    const next: RepeatMode =
+      curr === 'off' ? 'all' : curr === 'all' ? 'one' : 'off';
+    repeatModeRef.current = next;
+    setRepeatMode(next);
+  }, []);
+
   const playTrackYouTube = useCallback(
     async (track: PlayableTrack, newQueue?: PlayableTrack[]) => {
+      setSleepTimerNotice(null);
+
       if (
         modeRef.current === 'youtube' &&
         activeTrack &&
@@ -471,6 +601,8 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
 
   const playTrackPreview = useCallback(
     async (track: PlayableTrack, newQueue?: PlayableTrack[]) => {
+      setSleepTimerNotice(null);
+
       if (
         modeRef.current === 'preview' &&
         activeTrack &&
@@ -538,29 +670,119 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     ]
   );
 
-  const nextTrack = useCallback(async () => {
-    const q = queueRef.current;
-    const idx = queueIndexRef.current;
-    if (q.length === 0 || idx < 0 || idx >= q.length - 1) return;
-    const next = q[idx + 1];
-    queueIndexRef.current = idx + 1;
-    setQueueIndex(idx + 1);
-    if (modeRef.current === 'youtube') {
-      await playTrackYouTube(next);
-    } else {
-      await playTrackPreview(next);
+  const replayCurrentTrack = useCallback(() => {
+    if (
+      modeRef.current === 'youtube' &&
+      ytPlayerRef.current &&
+      ytReadyRef.current
+    ) {
+      ytPlayerRef.current.seekTo(0, true);
+      ytPlayerRef.current.playVideo();
+      setCurrentTime(0);
+      setIsPlaying(true);
+      return;
     }
-  }, [playTrackYouTube, playTrackPreview]);
+    if (modeRef.current === 'preview' && audioRef.current && audioRef.current.src) {
+      audioRef.current.currentTime = 0;
+      void audioRef.current.play().catch(() => {});
+      setCurrentTime(0);
+    }
+  }, []);
+
+  const nextTrack = useCallback(
+    async (fromAutoEnd = false) => {
+      if (fromAutoEnd && repeatModeRef.current === 'one') {
+        replayCurrentTrack();
+        return;
+      }
+
+      const q = queueRef.current;
+      if (q.length === 0) return;
+
+      let targetIndex = -1;
+
+      if (shuffleRef.current) {
+        if (shuffledOrderRef.current.length !== q.length) {
+          shuffledOrderRef.current = createShuffledOrder(
+            q.length,
+            Math.max(0, queueIndexRef.current)
+          );
+          shufflePosRef.current = 0;
+        }
+        const nextPos = shufflePosRef.current + 1;
+        if (nextPos < shuffledOrderRef.current.length) {
+          shufflePosRef.current = nextPos;
+          setShufflePos(nextPos);
+          targetIndex = shuffledOrderRef.current[nextPos];
+        } else if (repeatModeRef.current === 'all') {
+          shuffledOrderRef.current = createShuffledOrder(
+            q.length,
+            queueIndexRef.current
+          );
+          const wrapPos = shuffledOrderRef.current.length > 1 ? 1 : 0;
+          shufflePosRef.current = wrapPos;
+          setShufflePos(wrapPos);
+          targetIndex = shuffledOrderRef.current[wrapPos];
+        }
+      } else {
+        const idx = queueIndexRef.current;
+        if (idx >= 0 && idx < q.length - 1) {
+          targetIndex = idx + 1;
+        } else if (repeatModeRef.current === 'all' && q.length > 0) {
+          targetIndex = 0;
+        }
+      }
+
+      if (targetIndex < 0 || targetIndex >= q.length) return;
+
+      const next = q[targetIndex];
+      queueIndexRef.current = targetIndex;
+      setQueueIndex(targetIndex);
+
+      if (modeRef.current === 'youtube') {
+        await playTrackYouTube(next);
+      } else {
+        await playTrackPreview(next);
+      }
+    },
+    [replayCurrentTrack, playTrackYouTube, playTrackPreview]
+  );
 
   nextTrackRef.current = nextTrack;
 
   const prevTrack = useCallback(async () => {
     const q = queueRef.current;
-    const idx = queueIndexRef.current;
-    if (q.length === 0 || idx <= 0) return;
-    const prev = q[idx - 1];
-    queueIndexRef.current = idx - 1;
-    setQueueIndex(idx - 1);
+    if (q.length === 0) return;
+
+    let targetIndex = -1;
+
+    if (shuffleRef.current && shuffledOrderRef.current.length === q.length) {
+      if (shufflePosRef.current > 0) {
+        const prevPos = shufflePosRef.current - 1;
+        shufflePosRef.current = prevPos;
+        setShufflePos(prevPos);
+        targetIndex = shuffledOrderRef.current[prevPos];
+      } else if (repeatModeRef.current === 'all') {
+        const lastPos = shuffledOrderRef.current.length - 1;
+        shufflePosRef.current = lastPos;
+        setShufflePos(lastPos);
+        targetIndex = shuffledOrderRef.current[lastPos];
+      }
+    } else {
+      const idx = queueIndexRef.current;
+      if (idx > 0) {
+        targetIndex = idx - 1;
+      } else if (repeatModeRef.current === 'all' && q.length > 0) {
+        targetIndex = q.length - 1;
+      }
+    }
+
+    if (targetIndex < 0 || targetIndex >= q.length) return;
+
+    const prev = q[targetIndex];
+    queueIndexRef.current = targetIndex;
+    setQueueIndex(targetIndex);
+
     if (modeRef.current === 'youtube') {
       await playTrackYouTube(prev);
     } else {
@@ -574,12 +796,8 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     if (!audio) return;
     const onEnded = () => {
       setIsPlaying(false);
-      if (
-        modeRef.current === 'preview' &&
-        queueIndexRef.current >= 0 &&
-        queueIndexRef.current < queueRef.current.length - 1
-      ) {
-        void nextTrack();
+      if (modeRef.current === 'preview') {
+        void nextTrack(true);
       }
     };
     audio.addEventListener('ended', onEnded);
@@ -593,6 +811,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       artist?: string;
       genre?: string;
     }) => {
+      setSleepTimerNotice(null);
       ytRequestIdRef.current += 1;
       destroyYouTubePlayer();
       stopPreviewAudio();
@@ -643,6 +862,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   );
 
   const togglePlayPause = useCallback(() => {
+    setSleepTimerNotice(null);
     if (modeRef.current === 'youtube' && ytPlayerRef.current && ytReadyRef.current) {
       const state = ytPlayerRef.current.getPlayerState?.();
       if (state === 1) {
@@ -735,6 +955,19 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       ? ytCandidates[ytCandidateIndex]
       : null;
 
+  const isQueueMode = mode === 'youtube' || mode === 'preview';
+  const canPrev =
+    isQueueMode &&
+    queue.length > 1 &&
+    (repeatMode === 'all' || (shuffle ? shufflePos > 0 : queueIndex > 0));
+  const canNext =
+    isQueueMode &&
+    queue.length > 1 &&
+    (repeatMode === 'all' ||
+      (shuffle
+        ? shufflePos < queue.length - 1
+        : queueIndex >= 0 && queueIndex < queue.length - 1));
+
   return (
     <AudioPlayerContext.Provider
       value={{
@@ -751,17 +984,21 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
         currentTime,
         duration,
         volume,
-        canPrev:
-          (mode === 'youtube' || mode === 'preview') && queueIndex > 0,
-        canNext:
-          (mode === 'youtube' || mode === 'preview') &&
-          queueIndex >= 0 &&
-          queueIndex < queue.length - 1,
+        shuffle,
+        repeatMode,
+        sleepTimerSecondsLeft,
+        sleepTimerNotice,
+        canPrev,
+        canNext,
         registerYouTubeContainer,
         playTrackYouTube,
         playTrackPreview,
         playSoundscape,
         switchYouTubeCandidate,
+        toggleShuffle,
+        cycleRepeatMode,
+        setSleepTimerMinutes,
+        clearSleepTimerNotice,
         togglePlayPause,
         nextTrack,
         prevTrack,

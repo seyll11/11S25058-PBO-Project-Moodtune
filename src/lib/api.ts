@@ -4,7 +4,9 @@ import type {
   CoverVariant,
   GeneratedPlaylistDraft,
   LyricsThemeExplanation,
+  MoodJournalEntry,
   MoodRecommendationResponse,
+  MusicInsightsSummary,
   Playlist,
   PlaylistDetail,
   RecommendedTrack,
@@ -178,5 +180,39 @@ export const api = {
     authFetch<{ blueprint: SoundscapeBlueprint }>('/api/ai/soundscape', {
       method: 'POST',
       body: JSON.stringify(payload),
+    }),
+
+  getInsights: () =>
+    authFetch<{ insights: MusicInsightsSummary }>('/api/insights'),
+  listJournals: () =>
+    authFetch<{ journals: MoodJournalEntry[] }>('/api/journals'),
+  createJournal: (payload: {
+    moodLabel: string;
+    energyLevel: number;
+    note: string;
+    linkedSongId?: number | null;
+    entryDate: string;
+  }) =>
+    authFetch<{ journal: MoodJournalEntry }>('/api/journals', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateJournal: (
+    id: number,
+    payload: Partial<{
+      moodLabel: string;
+      energyLevel: number;
+      note: string;
+      linkedSongId: number | null;
+      entryDate: string;
+    }>
+  ) =>
+    authFetch<{ journal: MoodJournalEntry }>(`/api/journals/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+  deleteJournal: (id: number) =>
+    authFetch<{ success: boolean }>(`/api/journals/${id}`, {
+      method: 'DELETE',
     }),
 };

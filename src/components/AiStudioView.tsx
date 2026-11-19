@@ -25,6 +25,7 @@ import type {
 interface AiStudioViewProps {
   songs: Song[];
   initialTab?: 'recommend' | 'generator';
+  initialMoodPrompt?: string | null;
   onSongSaved: (song: Song) => void;
   onAssignNewTrackToPlaylist: (track: RecommendedTrack) => Promise<void>;
   onExplainTheme: (track: { title: string; artist: string; genre?: string }) => void;
@@ -42,6 +43,7 @@ const MOOD_PRESETS = [
 export function AiStudioView({
   songs,
   initialTab = 'recommend',
+  initialMoodPrompt = null,
   onSongSaved,
   onAssignNewTrackToPlaylist,
   onExplainTheme,
@@ -51,7 +53,7 @@ export function AiStudioView({
   const [mode, setMode] = useState<'recommend' | 'generator'>(initialTab);
 
   // Recommender state
-  const [moodInput, setMoodInput] = useState('');
+  const [moodInput, setMoodInput] = useState(initialMoodPrompt || '');
   const [recLoading, setRecLoading] = useState(false);
   const [recError, setRecError] = useState<string | null>(null);
   const [recResult, setRecResult] = useState<MoodRecommendationResponse | null>(
@@ -101,6 +103,13 @@ export function AiStudioView({
       setRecLoading(false);
     }
   };
+
+  React.useEffect(() => {
+    if (initialMoodPrompt && initialMoodPrompt.trim()) {
+      setMode('recommend');
+      void handleRunRecommend(undefined, initialMoodPrompt.trim());
+    }
+  }, [initialMoodPrompt]);
 
   const handleSaveSingleSong = async (track: RecommendedTrack) => {
     const key = trackKey(track);

@@ -111,3 +111,45 @@ export interface YouTubeSearchResult {
   candidates: YouTubeCandidate[];
   message?: string;
 }
+
+export interface MoodJournalLinkedSong {
+  id: number;
+  title: string;
+  artist: string;
+  genre: string;
+}
+
+export interface MoodJournalEntry {
+  id: number;
+  userId: number;
+  moodLabel: string;
+  energyLevel: number;
+  note: string;
+  linkedSongId: number | null;
+  linkedSong: MoodJournalLinkedSong | null;
+  entryDate: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DistributionStat {
+  label: string;
+  count: number;
+  percentage: number;
+}
+
+export interface MusicInsightsSummary {
+  totalSongs: number;
+  totalPlaylists: number;
+  uniqueArtists: number;
+  totalJournalEntries: number;
+  entriesThisMonth: number;
+  averageEnergy: number | null;
+  earliestYear: number | null;
+  latestYear: number | null;
+  genreBreakdown: DistributionStat[];
+  decadeBreakdown: DistributionStat[];
+  topArtists: DistributionStat[];
+  moodBreakdown: DistributionStat[];
+}
+

@@ -20,6 +20,13 @@ import {
   updateSongForUser,
 } from './src/db/music.ts';
 import {
+  createJournalForUser,
+  deleteJournalForUser,
+  getMusicInsightsForUser,
+  listJournalsByUser,
+  updateJournalForUser,
+} from './src/db/journals.ts';
+import {
   composeMoodSoundscape,
   explainSongLyricsTheme,
   GeminiServiceError,
@@ -363,6 +370,136 @@ async function startServer() {
       }
     }
   );
+
+  // Music Insights & Daily Mood Journal endpoints
+  app.get('/api/insights', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const insights = await getMusicInsightsForUser(req.dbUser!.id);
+      res.json({ insights });
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : 'Gagal memuat statistik musik.';
+      res.status(500).json({ error: message });
+    }
+  });
+
+  app.get('/api/journals', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const journals = await listJournalsByUser(req.dbUser!.id);
+      res.json({ journals });
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : 'Gagal memuat jurnal mood.';
+      res.status(500).json({ error: message });
+    }
+  });
+
+  app.post('/api/journals', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const { moodLabel, energyLevel, note, linkedSongId, entryDate } =
+        req.body || {};
+      if (!moodLabel?.trim() || !note?.trim()) {
+        res.status(400).json({
+          error: 'Kategori mood dan catatan refleksi wajib diisi.',
+        });
+        return;
+      }
+      const parsedEnergy = Number(energyLevel);
+      const safeEnergy = Number.isInteger(parsedEnergy)
+        ? Math.max(1, Math.min(5, parsedEnergy))
+        : 3;
+      const safeDate =
+        typeof entryDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(entryDate)
+          ? entryDate
+          : new Date().toISOString().slice(0, 10);
+      const parsedSongId =
+        linkedSongId !== null && linkedSongId !== undefined && linkedSongId !== ''
+          ? Number(linkedSongId)
+          : null;
+
+      const journal = await createJournalForUser(req.dbUser!.id, {
+        moodLabel: moodLabel.trim(),
+        energyLevel: safeEnergy,
+        note: note.trim(),
+        linkedSongId:
+          parsedSongId && Number.isInteger(parsedSongId) ? parsedSongId : null,
+        entryDate: safeDate,
+      });
+      res.status(201).json({ journal });
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : 'Gagal menyimpan jurnal mood.';
+      res.status(500).json({ error: message });
+    }
+  });
+
+  app.patch('/api/journals/:id', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const journalId = Number(req.params.id);
+      if (!Number.isInteger(journalId)) {
+        res.status(400).json({ error: 'ID jurnal tidak valid.' });
+        return;
+      }
+      const { moodLabel, energyLevel, note, linkedSongId, entryDate } =
+        req.body || {};
+      let safeEnergy: number | undefined;
+      if (energyLevel !== undefined) {
+        const parsedEnergy = Number(energyLevel);
+        if (Number.isInteger(parsedEnergy)) {
+          safeEnergy = Math.max(1, Math.min(5, parsedEnergy));
+        }
+      }
+      let safeLinkedSongId: number | null | undefined = undefined;
+      if (linkedSongId !== undefined) {
+        if (linkedSongId === null || linkedSongId === '') {
+          safeLinkedSongId = null;
+        } else {
+          const num = Number(linkedSongId);
+          safeLinkedSongId = Number.isInteger(num) ? num : null;
+        }
+      }
+
+      const updated = await updateJournalForUser(req.dbUser!.id, journalId, {
+        moodLabel: typeof moodLabel === 'string' ? moodLabel.trim() : undefined,
+        energyLevel: safeEnergy,
+        note: typeof note === 'string' ? note.trim() : undefined,
+        linkedSongId: safeLinkedSongId,
+        entryDate:
+          typeof entryDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(entryDate)
+            ? entryDate
+            : undefined,
+      });
+      if (!updated) {
+        res.status(404).json({ error: 'Entri jurnal tidak ditemukan.' });
+        return;
+      }
+      res.json({ journal: updated });
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : 'Gagal memperbarui jurnal mood.';
+      res.status(500).json({ error: message });
+    }
+  });
+
+  app.delete('/api/journals/:id', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const journalId = Number(req.params.id);
+      if (!Number.isInteger(journalId)) {
+        res.status(400).json({ error: 'ID jurnal tidak valid.' });
+        return;
+      }
+      const deleted = await deleteJournalForUser(req.dbUser!.id, journalId);
+      if (!deleted) {
+        res.status(404).json({ error: 'Entri jurnal tidak ditemukan.' });
+        return;
+      }
+      res.json({ success: true });
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : 'Gagal menghapus jurnal mood.';
+      res.status(500).json({ error: message });
+    }
+  });
 
   // Gemini AI endpoints
   app.post('/api/ai/recommend', requireAuth, async (req: AuthRequest, res) => {

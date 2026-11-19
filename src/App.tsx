@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
+  BarChart3,
   BookOpen,
   Disc3,
   ListMusic,
@@ -21,6 +22,7 @@ import { PlaylistsView } from './components/PlaylistsView.tsx';
 import { PlaylistDetailView } from './components/PlaylistDetailView.tsx';
 import { AiStudioView } from './components/AiStudioView.tsx';
 import { ThemeExplainerView } from './components/ThemeExplainerView.tsx';
+import { InsightsJournalView } from './components/InsightsJournalView.tsx';
 import { SongModal } from './components/SongModal.tsx';
 import { PlaylistModal } from './components/PlaylistModal.tsx';
 import { AddToPlaylistModal } from './components/AddToPlaylistModal.tsx';
@@ -34,7 +36,7 @@ import type {
   Song,
 } from './types/music.ts';
 
-type WorkspaceTab = 'songs' | 'playlists' | 'ai' | 'theme';
+type WorkspaceTab = 'songs' | 'playlists' | 'ai' | 'theme' | 'insights';
 
 function MoodTuneAppShell({
   isDark,
@@ -49,6 +51,10 @@ function MoodTuneAppShell({
   const [aiInitialMode, setAiInitialMode] = useState<'recommend' | 'generator'>(
     'recommend'
   );
+  const [aiPromptRequest, setAiPromptRequest] = useState<{
+    prompt: string;
+    nonce: number;
+  } | null>(null);
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<number | null>(
     null
   );
@@ -263,6 +269,12 @@ function MoodTuneAppShell({
     { id: 'playlists', label: 'Playlist', shortLabel: 'Playlist', icon: ListMusic },
     { id: 'ai', label: 'AI Studio', shortLabel: 'AI Mood', icon: Sparkles },
     { id: 'theme', label: 'Penjelas Tema', shortLabel: 'Tema', icon: BookOpen },
+    {
+      id: 'insights',
+      label: 'Wawasan & Jurnal',
+      shortLabel: 'Jurnal',
+      icon: BarChart3,
+    },
   ];
 
   const pageTitle =
@@ -274,7 +286,9 @@ function MoodTuneAppShell({
           : 'Playlist'
         : activeTab === 'ai'
           ? 'AI Mood & Generator'
-          : 'Penjelas Tema Lagu';
+          : activeTab === 'theme'
+            ? 'Penjelas Tema Lagu'
+            : 'Wawasan & Jurnal Mood';
 
   const displayName =
     profile?.displayName ||
@@ -500,9 +514,10 @@ function MoodTuneAppShell({
 
           {activeTab === 'ai' && (
             <AiStudioView
-              key={aiInitialMode}
+              key={`${aiInitialMode}-${aiPromptRequest?.nonce || 0}`}
               songs={songs}
               initialTab={aiInitialMode}
+              initialMoodPrompt={aiPromptRequest?.prompt || null}
               onSongSaved={(newSong) => {
                 setSongs((prev) => [newSong, ...prev]);
                 showToast(`"${newSong.title}" disimpan ke koleksi.`);
@@ -514,13 +529,29 @@ function MoodTuneAppShell({
           )}
 
           {activeTab === 'theme' && <ThemeExplainerView songs={songs} />}
+
+          {activeTab === 'insights' && (
+            <InsightsJournalView
+              songs={songs}
+              onAskAiFromJournal={(moodPrompt) => {
+                setAiInitialMode('recommend');
+                setAiPromptRequest({ prompt: moodPrompt, nonce: Date.now() });
+                setActiveTab('ai');
+              }}
+              onAddFirstSong={() => {
+                setEditingSong(null);
+                setSongModalOpen(true);
+              }}
+              onNotify={showToast}
+            />
+          )}
         </main>
       </div>
 
       {/* Mobile Fixed Bottom Navigation Bar */}
       <nav
         aria-label="Navigasi mobile"
-        className="fixed bottom-0 left-0 right-0 z-40 grid h-16 grid-cols-4 border-t border-zinc-200 bg-white/95 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/95 lg:hidden"
+        className="fixed bottom-0 left-0 right-0 z-40 grid h-16 grid-cols-5 border-t border-zinc-200 bg-white/95 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/95 lg:hidden"
       >
         {navItems.map((item) => {
           const Icon = item.icon;

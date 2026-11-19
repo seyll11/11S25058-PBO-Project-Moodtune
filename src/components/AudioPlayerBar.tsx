@@ -8,8 +8,12 @@ import {
   Pause,
   Play,
   RefreshCw,
+  Repeat,
+  Repeat1,
+  Shuffle,
   SkipBack,
   SkipForward,
+  Timer,
   Volume2,
   VolumeX,
   X,
@@ -29,6 +33,8 @@ function formatTime(sec: number) {
   return `${m}:${String(rem).padStart(2, '0')}`;
 }
 
+const SLEEP_OPTIONS = [15, 30, 45, 60];
+
 export function AudioPlayerBar() {
   const {
     mode,
@@ -44,6 +50,10 @@ export function AudioPlayerBar() {
     currentTime,
     duration,
     volume,
+    shuffle,
+    repeatMode,
+    sleepTimerSecondsLeft,
+    sleepTimerNotice,
     canPrev,
     canNext,
     registerYouTubeContainer,
@@ -51,6 +61,10 @@ export function AudioPlayerBar() {
     playTrackPreview,
     playSoundscape,
     switchYouTubeCandidate,
+    toggleShuffle,
+    cycleRepeatMode,
+    setSleepTimerMinutes,
+    clearSleepTimerNotice,
     togglePlayPause,
     nextTrack,
     prevTrack,
@@ -61,6 +75,7 @@ export function AudioPlayerBar() {
 
   const ytHostRef = useRef<HTMLDivElement | null>(null);
   const [ytCompact, setYtCompact] = useState(false);
+  const [timerMenuOpen, setTimerMenuOpen] = useState(false);
 
   useEffect(() => {
     if (mode === 'youtube') {
@@ -102,6 +117,13 @@ export function AudioPlayerBar() {
 
   const maxDuration = duration > 0 ? duration : mode === 'preview' ? 30 : 180;
   const hasSeekableTimeline = mode === 'youtube' || mode === 'preview';
+
+  const repeatLabel =
+    repeatMode === 'one'
+      ? 'Ulangi 1 lagu (klik untuk matikan)'
+      : repeatMode === 'all'
+        ? 'Ulangi semua antrean (klik untuk ulangi 1 lagu)'
+        : 'Mode ulangi mati (klik untuk ulangi semua)';
 
   return (
     <>
@@ -174,13 +196,31 @@ export function AudioPlayerBar() {
         </div>
       )}
 
+      {/* Sleep Timer Auto-Pause Notice */}
+      {sleepTimerNotice && (
+        <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-xs font-medium text-blue-800 dark:border-blue-900/60 dark:bg-blue-950/60 dark:text-blue-200 lg:fixed lg:bottom-[84px] lg:left-72 lg:z-30 lg:mb-0 lg:shadow-md">
+          <div className="flex items-center gap-2">
+            <Timer className="h-4 w-4 shrink-0" />
+            <span>{sleepTimerNotice}</span>
+          </div>
+          <button
+            type="button"
+            onClick={clearSleepTimerNotice}
+            aria-label="Tutup pemberitahuan timer"
+            className="text-blue-600 hover:text-blue-900 dark:text-blue-300 dark:hover:text-white"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* Desktop Bottom Dock Player */}
       <aside
         aria-label="Pemutar audio MoodTune"
-        className="hidden lg:flex fixed bottom-0 left-64 right-0 z-30 h-[72px] items-center justify-between gap-5 border-t border-zinc-200 bg-white/95 px-6 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/95"
+        className="hidden lg:flex fixed bottom-0 left-64 right-0 z-30 h-[72px] items-center justify-between gap-4 border-t border-zinc-200 bg-white/95 px-6 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/95"
       >
         {/* Left: Track / Soundscape Info */}
-        <div className="flex items-center gap-3 min-w-0 w-72 shrink-0">
+        <div className="flex items-center gap-3 min-w-0 w-64 shrink-0">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-200 bg-zinc-50 text-blue-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-blue-400">
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -235,7 +275,7 @@ export function AudioPlayerBar() {
         </div>
 
         {/* Center: Playback Controls & Progress / Error */}
-        <div className="flex flex-1 max-w-xl flex-col items-center gap-1.5 min-w-0">
+        <div className="flex flex-1 max-w-xl flex-col items-center gap-1 min-w-0">
           {error ? (
             <div className="flex items-center gap-2.5 text-xs text-red-600 dark:text-red-400 max-w-full">
               <span className="truncate">{error}</span>
@@ -269,7 +309,24 @@ export function AudioPlayerBar() {
             </div>
           ) : (
             <>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
+                {hasSeekableTimeline && (
+                  <button
+                    type="button"
+                    onClick={toggleShuffle}
+                    title={shuffle ? 'Acak antrean aktif' : 'Aktifkan acak antrean'}
+                    aria-label="Acak antrean"
+                    aria-pressed={shuffle}
+                    className={`inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
+                      shuffle
+                        ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400'
+                        : 'text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800'
+                    }`}
+                  >
+                    <Shuffle className="h-3.5 w-3.5" />
+                  </button>
+                )}
+
                 {hasSeekableTimeline && (
                   <button
                     type="button"
@@ -302,11 +359,31 @@ export function AudioPlayerBar() {
                   <button
                     type="button"
                     disabled={!canNext || isLoading}
-                    onClick={() => void nextTrack()}
+                    onClick={() => void nextTrack(false)}
                     aria-label="Lagu berikutnya"
                     className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-zinc-600 hover:bg-zinc-100 disabled:opacity-30 dark:text-zinc-300 dark:hover:bg-zinc-800"
                   >
                     <SkipForward className="h-4 w-4" />
+                  </button>
+                )}
+
+                {hasSeekableTimeline && (
+                  <button
+                    type="button"
+                    onClick={cycleRepeatMode}
+                    title={repeatLabel}
+                    aria-label={repeatLabel}
+                    className={`inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
+                      repeatMode !== 'off'
+                        ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400'
+                        : 'text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800'
+                    }`}
+                  >
+                    {repeatMode === 'one' ? (
+                      <Repeat1 className="h-3.5 w-3.5" />
+                    ) : (
+                      <Repeat className="h-3.5 w-3.5" />
+                    )}
                   </button>
                 )}
               </div>
@@ -343,8 +420,63 @@ export function AudioPlayerBar() {
           )}
         </div>
 
-        {/* Right: Mode Switch + Volume + Close */}
+        {/* Right: Sleep Timer + Mode Switch + Volume + Close */}
         <div className="flex items-center gap-2 shrink-0">
+          {/* Sleep Timer Dropdown */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setTimerMenuOpen((o) => !o)}
+              title="Atur Sleep Timer"
+              aria-label="Sleep Timer"
+              className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition-colors whitespace-nowrap ${
+                sleepTimerSecondsLeft !== null
+                  ? 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900 dark:bg-blue-950/60 dark:text-blue-300'
+                  : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-800'
+              }`}
+            >
+              <Timer className="h-3.5 w-3.5 shrink-0" />
+              <span className="font-mono tabular-nums">
+                {sleepTimerSecondsLeft !== null
+                  ? formatTime(sleepTimerSecondsLeft)
+                  : 'Timer'}
+              </span>
+            </button>
+
+            {timerMenuOpen && (
+              <div className="absolute bottom-11 right-0 z-40 w-44 rounded-xl border border-zinc-200 bg-white p-1.5 shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
+                <p className="px-2.5 py-1.5 text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+                  Jeda otomatis setelah
+                </p>
+                {SLEEP_OPTIONS.map((mins) => (
+                  <button
+                    key={mins}
+                    type="button"
+                    onClick={() => {
+                      setSleepTimerMinutes(mins);
+                      setTimerMenuOpen(false);
+                    }}
+                    className="flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                  >
+                    <span>{mins} menit</span>
+                  </button>
+                ))}
+                {sleepTimerSecondsLeft !== null && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSleepTimerMinutes(null);
+                      setTimerMenuOpen(false);
+                    }}
+                    className="mt-1 flex w-full items-center rounded-lg border-t border-zinc-100 px-2.5 py-1.5 text-left text-xs font-medium text-red-600 hover:bg-red-50 dark:border-zinc-800 dark:text-red-400 dark:hover:bg-red-950/40"
+                  >
+                    Matikan Timer
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
           {activeTrack.artist !== 'MoodTune AI Soundscape' && (
             <div className="inline-flex items-center rounded-lg border border-zinc-200 bg-zinc-50 p-0.5 dark:border-zinc-800 dark:bg-zinc-950">
               <button
@@ -404,7 +536,7 @@ export function AudioPlayerBar() {
               value={volume}
               onChange={(e) => setVolume(Number(e.target.value))}
               aria-label="Volume"
-              className="w-20 h-1 cursor-pointer accent-blue-600"
+              className="w-16 h-1 cursor-pointer accent-blue-600"
             />
           </div>
 
@@ -471,7 +603,7 @@ export function AudioPlayerBar() {
             {hasSeekableTimeline && canNext && (
               <button
                 type="button"
-                onClick={() => void nextTrack()}
+                onClick={() => void nextTrack(false)}
                 aria-label="Lagu berikutnya"
                 className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-zinc-600 dark:text-zinc-300"
               >
@@ -512,43 +644,111 @@ export function AudioPlayerBar() {
           </div>
         )}
 
-        {activeTrack.artist !== 'MoodTune AI Soundscape' && !error && (
+        {/* Mobile Shuffle, Repeat, Sleep Timer & Mode Switch Row */}
+        {!error && (
           <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5">
-            <div className="inline-flex items-center rounded-lg border border-zinc-200 bg-zinc-50 p-0.5 dark:border-zinc-800 dark:bg-zinc-950">
-              <button
-                type="button"
-                onClick={handleSwitchToYouTube}
-                className={`rounded-md px-2.5 py-1 text-[11px] font-medium ${
-                  mode === 'youtube'
-                    ? 'bg-white text-zinc-950 shadow-sm dark:bg-zinc-800 dark:text-zinc-50'
-                    : 'text-zinc-600 dark:text-zinc-400'
+            <div className="flex items-center gap-1">
+              {hasSeekableTimeline && (
+                <>
+                  <button
+                    type="button"
+                    onClick={toggleShuffle}
+                    aria-label="Acak antrean"
+                    aria-pressed={shuffle}
+                    className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border text-xs ${
+                      shuffle
+                        ? 'border-blue-200 bg-blue-50 text-blue-600 dark:border-blue-900 dark:bg-blue-950/60 dark:text-blue-400'
+                        : 'border-zinc-200 text-zinc-600 dark:border-zinc-800 dark:text-zinc-400'
+                    }`}
+                  >
+                    <Shuffle className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={cycleRepeatMode}
+                    aria-label={repeatLabel}
+                    className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border text-xs ${
+                      repeatMode !== 'off'
+                        ? 'border-blue-200 bg-blue-50 text-blue-600 dark:border-blue-900 dark:bg-blue-950/60 dark:text-blue-400'
+                        : 'border-zinc-200 text-zinc-600 dark:border-zinc-800 dark:text-zinc-400'
+                    }`}
+                  >
+                    {repeatMode === 'one' ? (
+                      <Repeat1 className="h-3.5 w-3.5" />
+                    ) : (
+                      <Repeat className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                </>
+              )}
+
+              <select
+                aria-label="Pilih Sleep Timer"
+                value={
+                  sleepTimerSecondsLeft !== null
+                    ? String(Math.ceil(sleepTimerSecondsLeft / 60))
+                    : ''
+                }
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSleepTimerMinutes(val ? Number(val) : null);
+                }}
+                className={`h-9 rounded-lg border px-2 font-mono text-[11px] font-medium ${
+                  sleepTimerSecondsLeft !== null
+                    ? 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900 dark:bg-blue-950/60 dark:text-blue-300'
+                    : 'border-zinc-200 bg-white text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300'
                 }`}
               >
-                YouTube Penuh
-              </button>
-              <button
-                type="button"
-                onClick={handleSwitchToPreview}
-                className={`rounded-md px-2.5 py-1 text-[11px] font-medium ${
-                  mode === 'preview'
-                    ? 'bg-white text-zinc-950 shadow-sm dark:bg-zinc-800 dark:text-zinc-50'
-                    : 'text-zinc-600 dark:text-zinc-400'
-                }`}
-              >
-                30s
-              </button>
-              <button
-                type="button"
-                onClick={handleSwitchToSoundscape}
-                className={`rounded-md px-2.5 py-1 text-[11px] font-medium ${
-                  mode === 'soundscape'
-                    ? 'bg-white text-zinc-950 shadow-sm dark:bg-zinc-800 dark:text-zinc-50'
-                    : 'text-zinc-600 dark:text-zinc-400'
-                }`}
-              >
-                AI Sound
-              </button>
+                <option value="">
+                  {sleepTimerSecondsLeft !== null
+                    ? `Timer ${formatTime(sleepTimerSecondsLeft)}`
+                    : 'Timer Off'}
+                </option>
+                {SLEEP_OPTIONS.map((m) => (
+                  <option key={m} value={m}>
+                    {m} mnt
+                  </option>
+                ))}
+              </select>
             </div>
+
+            {activeTrack.artist !== 'MoodTune AI Soundscape' && (
+              <div className="inline-flex items-center rounded-lg border border-zinc-200 bg-zinc-50 p-0.5 dark:border-zinc-800 dark:bg-zinc-950">
+                <button
+                  type="button"
+                  onClick={handleSwitchToYouTube}
+                  className={`rounded-md px-2 py-1 text-[11px] font-medium whitespace-nowrap ${
+                    mode === 'youtube'
+                      ? 'bg-white text-zinc-950 shadow-sm dark:bg-zinc-800 dark:text-zinc-50'
+                      : 'text-zinc-600 dark:text-zinc-400'
+                  }`}
+                >
+                  YouTube
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSwitchToPreview}
+                  className={`rounded-md px-2 py-1 text-[11px] font-medium whitespace-nowrap ${
+                    mode === 'preview'
+                      ? 'bg-white text-zinc-950 shadow-sm dark:bg-zinc-800 dark:text-zinc-50'
+                      : 'text-zinc-600 dark:text-zinc-400'
+                  }`}
+                >
+                  30s
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSwitchToSoundscape}
+                  className={`rounded-md px-2 py-1 text-[11px] font-medium whitespace-nowrap ${
+                    mode === 'soundscape'
+                      ? 'bg-white text-zinc-950 shadow-sm dark:bg-zinc-800 dark:text-zinc-50'
+                      : 'text-zinc-600 dark:text-zinc-400'
+                  }`}
+                >
+                  AI
+                </button>
+              </div>
+            )}
           </div>
         )}
 

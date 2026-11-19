@@ -60,9 +60,26 @@ export const playlistSongs = pgTable(
   ]
 );
 
+export const moodJournals = pgTable('mood_journals', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .notNull(),
+  moodLabel: text('mood_label').notNull(),
+  energyLevel: integer('energy_level').default(3).notNull(),
+  note: text('note').notNull(),
+  linkedSongId: integer('linked_song_id').references(() => songs.id, {
+    onDelete: 'set null',
+  }),
+  entryDate: text('entry_date').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 export const usersRelations = relations(users, ({ many }) => ({
   songs: many(songs),
   playlists: many(playlists),
+  moodJournals: many(moodJournals),
 }));
 
 export const songsRelations = relations(songs, ({ one, many }) => ({
@@ -71,6 +88,7 @@ export const songsRelations = relations(songs, ({ one, many }) => ({
     references: [users.id],
   }),
   playlistLinks: many(playlistSongs),
+  moodJournalLinks: many(moodJournals),
 }));
 
 export const playlistsRelations = relations(playlists, ({ one, many }) => ({
@@ -92,7 +110,20 @@ export const playlistSongsRelations = relations(playlistSongs, ({ one }) => ({
   }),
 }));
 
+export const moodJournalsRelations = relations(moodJournals, ({ one }) => ({
+  owner: one(users, {
+    fields: [moodJournals.userId],
+    references: [users.id],
+  }),
+  linkedSong: one(songs, {
+    fields: [moodJournals.linkedSongId],
+    references: [songs.id],
+  }),
+}));
+
 export type UserRow = typeof users.$inferSelect;
 export type SongRow = typeof songs.$inferSelect;
 export type PlaylistRow = typeof playlists.$inferSelect;
 export type PlaylistSongRow = typeof playlistSongs.$inferSelect;
+export type MoodJournalRow = typeof moodJournals.$inferSelect;
+
