@@ -1,0 +1,6 @@
+{
+  "name": "MoodTune",
+  "description": "Pengelola koleksi lagu dan playlist berbasis mood dengan rekomendasi dan penjelasan tema lirik bertenaga AI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
