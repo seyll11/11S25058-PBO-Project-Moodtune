@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="id" xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(title)">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title th:text="${title} + ' · MoodTune'">MoodTune</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+<header class="site-header" th:fragment="header(activeTab)">
+  <div class="nav-wrap">
+    <a class="brand" th:href="@{/songs}"><span class="brand-mark">M</span><span>MoodTune<small>music, in your mood</small></span></a>
+    <nav class="nav-links" aria-label="Navigasi utama">
+      <a th:href="@{/songs}" th:classappend="${activeTab == 'songs'} ? 'active'">Koleksi lagu</a>
+      <a th:href="@{/playlists}" th:classappend="${activeTab == 'playlists'} ? 'active'">Playlist</a>
+      <a th:href="@{/audio}" th:classappend="${activeTab == 'audio'} ? 'active'">Dengarkan</a>
+      <a th:href="@{/ai}" th:classappend="${activeTab == 'ai'} ? 'active'">AI Studio</a>
+      <a th:href="@{/theme}" th:classappend="${activeTab == 'theme'} ? 'active'">Tema lagu</a>
+      <a th:href="@{/journal}" th:classappend="${activeTab == 'journal'} ? 'active'">Jurnal mood</a>
+      <a th:href="@{/insights}" th:classappend="${activeTab == 'insights'} ? 'active'">Insights</a>
+    </nav>
+  </div>
+  <div class="notice-wrap" th:if="${notice != null}">
+    <div class="notice" role="status" th:text="${notice}"></div>
+  </div>
+</header>
+</body>
+</html>

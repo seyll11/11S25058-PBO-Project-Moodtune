@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="id" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head(${journalId != null ? 'Edit Jurnal' : 'Catat Mood'})}"></head>
+<body>
+<div th:replace="~{layout :: header('journal')}"></div>
+<main class="container narrow">
+  <a class="back-link" th:href="@{/journal}">← Kembali ke jurnal</a>
+  <section class="form-card">
+    <p class="eyebrow">JURNAL MOOD</p><h1 th:text="${journalId != null ? 'Edit catatan' : 'Catat suasana hati'}">Catat mood</h1>
+    <form method="post" th:object="${form}" th:action="${journalId != null ? '/journal/' + journalId : '/journal'}">
+      <div class="form-grid">
+        <label>Mood saat ini<input type="text" th:field="*{moodLabel}" maxlength="80" placeholder="Tenang, bersemangat..." required></label>
+        <label>Tanggal<input type="date" th:field="*{entryDate}" required></label>
+      </div>
+      <p class="field-error" th:errors="*{moodLabel}"></p><p class="field-error" th:errors="*{entryDate}"></p>
+      <label>Energi <span class="muted">(1 rendah — 5 tinggi)</span><input type="range" th:field="*{energyLevel}" min="1" max="5" oninput="this.nextElementSibling.value=this.value"><output th:text="${form.energyLevel}">3</output></label>
+      <p class="field-error" th:errors="*{energyLevel}"></p>
+      <label>Catatan<textarea th:field="*{note}" maxlength="2000" rows="5" placeholder="Apa yang sedang kamu rasakan?" required></textarea></label>
+      <p class="field-error" th:errors="*{note}"></p>
+      <label>Lagu terkait <span class="muted">(opsional)</span><select th:field="*{linkedSongId}"><option value="">Tanpa lagu</option><option th:each="song : ${songs}" th:value="${song.id}" th:text="${song.title + ' — ' + song.artist}"></option></select></label>
+      <div class="form-actions"><a class="button secondary" th:href="@{/journal}">Batal</a><button class="button primary" type="submit">Simpan catatan</button></div>
+    </form>
+  </section>
+</main>
+</body>
+</html>

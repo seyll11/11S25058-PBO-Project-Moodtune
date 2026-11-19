@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="id" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head(${playlist.name})}"></head>
+<body>
+<div th:replace="~{layout :: header('playlists')}"></div>
+<main class="container">
+  <a class="back-link" th:href="@{/playlists}">← Semua playlist</a>
+  <section class="detail-hero" th:classappend="'cover-' + ${playlist.coverVariant}">
+    <div><p class="eyebrow" th:text="${playlist.moodTag ?: 'MOODTUNE MIX'}">MOODTUNE MIX</p><h1 th:text="${playlist.name}">Playlist</h1><p th:text="${playlist.description ?: 'Kurasi pribadi untuk menemani harimu.'}">Deskripsi</p><span class="tag light" th:text="${playlist.tracks.size()} + ' lagu'">0 lagu</span></div>
+    <div class="hero-actions"><a class="button light-button" th:href="@{/playlists/{id}/edit(id=${playlist.id})}">Edit playlist</a></div>
+  </section>
+  <section class="content-section">
+    <div class="row-between section-heading"><div><p class="eyebrow">TRACKLIST</p><h2>Lagu dalam playlist</h2></div></div>
+    <div class="empty-inline" th:if="${#lists.isEmpty(playlist.tracks)}">Playlist ini belum memiliki lagu.</div>
+    <div class="table-card" th:unless="${#lists.isEmpty(playlist.tracks)}"><div class="table-scroll"><table>
+      <thead><tr><th>#</th><th>Judul</th><th>Genre</th><th>Tahun</th><th><span class="sr-only">Aksi</span></th></tr></thead>
+      <tbody><tr th:each="track, stat : ${playlist.tracks}">
+        <td class="muted" th:text="${stat.count}">1</td>
+        <td><strong th:text="${track.song.title}">Judul</strong><span class="muted block" th:text="${track.song.artist}">Artis</span></td>
+        <td th:text="${track.song.genre}">Genre</td><td th:text="${track.song.releaseYear}">2024</td>
+        <td class="actions">
+          <form method="post" th:action="@{/playlists/{id}/tracks/{songId}/move/up(id=${playlist.id},songId=${track.song.id})}"><button class="icon-button" type="submit" aria-label="Pindah ke atas" th:disabled="${stat.first}">↑</button></form>
+          <form method="post" th:action="@{/playlists/{id}/tracks/{songId}/move/down(id=${playlist.id},songId=${track.song.id})}"><button class="icon-button" type="submit" aria-label="Pindah ke bawah" th:disabled="${stat.last}">↓</button></form>
+          <form method="post" th:action="@{/playlists/{id}/tracks/{songId}/remove(id=${playlist.id},songId=${track.song.id})}"><button class="button small danger" type="submit">Hapus</button></form>
+        </td>
+      </tr></tbody>
+    </table></div></div>
+  </section>
+  <section class="content-section add-track">
+    <div><p class="eyebrow">PERPUSTAKAAN</p><h2>Tambahkan lagu</h2><p class="muted">Lagu harus ditambahkan ke koleksi terlebih dahulu.</p></div>
+    <form class="inline-form" method="post" th:action="@{/playlists/{id}/tracks(id=${playlist.id})}" th:if="${!#lists.isEmpty(songs)}">
+      <select name="songId" required><option value="" disabled selected>Pilih lagu...</option><option th:each="song : ${songs}" th:value="${song.id}" th:text="${song.title + ' — ' + song.artist}"></option></select>
+      <button class="button primary" type="submit">Tambahkan</button>
+    </form>
+    <p class="muted" th:if="${#lists.isEmpty(songs)}">Koleksi lagu kosong. <a th:href="@{/songs/new}">Tambah lagu baru</a></p>
+  </section>
+</main>
+</body>
+</html>

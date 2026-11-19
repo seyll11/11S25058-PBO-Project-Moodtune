@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="id" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head(${songId != null ? 'Edit Lagu' : 'Tambah Lagu'})}"></head>
+<body>
+<div th:replace="~{layout :: header('songs')}"></div>
+<main class="container narrow">
+  <a class="back-link" th:href="@{/songs}">← Kembali ke koleksi</a>
+  <section class="form-card">
+    <p class="eyebrow">KOLEKSI MUSIK</p>
+    <h1 th:text="${songId != null ? 'Edit lagu' : 'Tambah lagu'}">Tambah lagu</h1>
+    <form method="post" th:object="${form}" th:action="${songId != null ? '/songs/' + songId : '/songs'}">
+      <label>Judul lagu<input type="text" th:field="*{title}" maxlength="160" required></label>
+      <p class="field-error" th:errors="*{title}"></p>
+      <label>Artis<input type="text" th:field="*{artist}" maxlength="160" required></label>
+      <p class="field-error" th:errors="*{artist}"></p>
+      <div class="form-grid">
+        <label>Genre<input type="text" th:field="*{genre}" maxlength="80" placeholder="Pop, Jazz, Rock..." required></label>
+        <label>Tahun rilis<input type="number" th:field="*{releaseYear}" min="1900" max="2030" required></label>
+      </div>
+      <p class="field-error" th:errors="*{genre}"></p><p class="field-error" th:errors="*{releaseYear}"></p>
+      <label>Catatan suasana hati <span class="muted">(opsional)</span><textarea th:field="*{moodNote}" maxlength="500" rows="3" placeholder="Kenangan atau suasana yang terkait dengan lagu ini"></textarea></label>
+      <p class="field-error" th:errors="*{moodNote}"></p>
+      <div class="form-actions"><a class="button secondary" th:href="@{/songs}">Batal</a><button class="button primary" type="submit">Simpan lagu</button></div>
+    </form>
+  </section>
+</main>
+</body>
+</html>

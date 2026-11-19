@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="id" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Tidak Ditemukan')}"></head>
+<body>
+<div th:replace="~{layout :: header('')}"></div>
+<main class="container narrow">
+  <section class="empty-state"><div class="empty-icon">?</div><h1>Konten tidak ditemukan</h1><p th:text="${message}">Data yang dicari tidak tersedia.</p><a class="button primary" th:href="@{/songs}">Kembali ke koleksi</a></section>
+</main>
+</body>
+</html>

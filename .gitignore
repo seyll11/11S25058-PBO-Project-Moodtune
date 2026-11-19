@@ -2,6 +2,10 @@ node_modules/
 build/
 dist/
 coverage/
+target/
+data/
+*.mv.db
+*.trace.db
 .DS_Store
 *.log
 .env*

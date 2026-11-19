@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="id" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Jurnal Mood')}"></head>
+<body>
+<div th:replace="~{layout :: header('journal')}"></div>
+<main class="container">
+  <section class="page-heading">
+    <div><p class="eyebrow">CATAT PERJALANANMU</p><h1>Jurnal mood</h1><p class="subheading">Hubungkan suasana hati, energi, dan musik dalam satu catatan.</p></div>
+    <a class="button primary" th:href="@{/journal/new}">＋ Catat mood</a>
+  </section>
+  <section class="empty-state" th:if="${#lists.isEmpty(journals)}"><div class="empty-icon">✎</div><h2>Belum ada catatan</h2><p>Mulai jurnal mood dan lihat pola suasana hatimu dari waktu ke waktu.</p><a class="button primary" th:href="@{/journal/new}">Buat catatan pertama</a></section>
+  <section class="journal-list" th:unless="${#lists.isEmpty(journals)}">
+    <article class="journal-card" th:each="entry : ${journals}">
+      <div class="journal-date"><span th:text="${#temporals.format(entry.entryDate, 'dd')}">01</span><small th:text="${#temporals.format(entry.entryDate, 'MMM yyyy')}">Jan 2026</small></div>
+      <div class="journal-content"><div class="row-between"><div><span class="tag mood-tag" th:text="${entry.moodLabel}">Mood</span><span class="energy" th:text="'Energi ' + ${entry.energyLevel} + '/5'">Energi 3/5</span></div><div class="actions"><a class="button small secondary" th:href="@{/journal/{id}/edit(id=${entry.id})}">Edit</a><form method="post" th:action="@{/journal/{id}/delete(id=${entry.id})}" onsubmit="return confirm('Hapus catatan ini?')"><button class="button small danger" type="submit">Hapus</button></form></div></div>
+        <p class="journal-note" th:text="${entry.note}">Catatan hari ini</p><p class="muted linked-song" th:if="${entry.linkedSong != null}" th:text="'♫ ' + ${entry.linkedSong.title} + ' — ' + ${entry.linkedSong.artist}"></p>
+      </div>
+    </article>
+  </section>
+</main>
+</body>
+</html>

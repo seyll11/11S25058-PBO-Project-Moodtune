@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="id" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Dengarkan')}"></head>
+<body>
+<div th:replace="~{layout :: header('audio')}"></div>
+<main class="container narrow">
+  <section class="page-heading"><div><p class="eyebrow">MUSIC PLAYER</p><h1>Dengarkan</h1><p class="subheading">Putar cuplikan audio atau cari versi lagu di YouTube.</p></div></section>
+  <section class="form-card">
+    <form method="get" th:action="@{/audio}">
+      <label>Judul lagu<input name="title" type="text" maxlength="160" required placeholder="Masukkan judul lagu" th:value="${title}"></label>
+      <label>Artis<input name="artist" type="text" maxlength="160" placeholder="Nama artis" th:value="${artist}"></label>
+      <button class="button primary" type="submit">Cari audio</button>
+    </form>
+    <div th:if="${audioError != null}" class="notice error-card" th:text="${audioError}"></div>
+    <section class="audio-result" th:if="${preview != null}">
+      <p class="eyebrow">PRATINJAU RESMI</p>
+      <div th:if="${preview.found}">
+        <h2 th:text="${preview.trackName}">Judul lagu</h2><p class="muted" th:text="${preview.artistName}">Artis</p>
+        <audio controls preload="none" th:src="${preview.previewUrl}">Browser tidak mendukung pemutar audio.</audio>
+        <a class="external-link" th:if="${!#strings.isEmpty(preview.trackViewUrl)}" th:href="${preview.trackViewUrl}" target="_blank" rel="noopener noreferrer">Buka lagu di Apple Music ↗</a>
+      </div>
+      <p class="empty-inline" th:unless="${preview.found}" th:text="${preview.message}">Pratinjau tidak ditemukan.</p>
+    </section>
+  </section>
+  <section class="panel audio-videos" th:if="${videos != null}">
+    <div class="row-between"><div><p class="eyebrow">VIDEO</p><h2>Versi YouTube</h2></div><a class="button small secondary" th:href="${videos.searchUrl}" target="_blank" rel="noopener noreferrer">Cari di YouTube ↗</a></div>
+    <p class="muted" th:if="${videos.message != null}" th:text="${videos.message}"></p>
+    <ul class="video-list" th:if="${!#lists.isEmpty(videos.videos)}">
+      <li th:each="video : ${videos.videos}"><a th:href="${video.watchUrl}" target="_blank" rel="noopener noreferrer"><strong th:text="${video.title}">Judul video</strong><span class="muted block" th:text="${video.channel}">Kanal</span></a></li>
+    </ul>
+  </section>
+  <section class="content-section" th:if="${!#lists.isEmpty(songs)}">
+    <p class="eyebrow">DARI KOLEKSI</p><h2>Putar lagu tersimpan</h2>
+    <div class="audio-song-list"><a th:each="song : ${songs}" th:href="@{/audio(title=${song.title},artist=${song.artist})}"><span><strong th:text="${song.title}">Judul</strong><small th:text="${song.artist}">Artis</small></span><span class="play-icon">▶</span></a></div>
+  </section>
+</main>
+</body>
+</html>

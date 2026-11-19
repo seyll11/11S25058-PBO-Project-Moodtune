@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="id" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Playlist')}"></head>
+<body>
+<div th:replace="~{layout :: header('playlists')}"></div>
+<main class="container">
+  <section class="page-heading">
+    <div><p class="eyebrow">MIX SESUAI SUASANA</p><h1>Playlist</h1><p class="subheading">Rangkai koleksi lagu menjadi soundtrack untuk setiap momen.</p></div>
+    <a class="button primary" th:href="@{/playlists/new}">＋ Buat playlist</a>
+  </section>
+  <section class="empty-state" th:if="${#lists.isEmpty(playlists)}">
+    <div class="empty-icon">▤</div><h2>Belum ada playlist</h2><p>Buat playlist, lalu tambahkan lagu dari koleksimu.</p>
+    <a class="button primary" th:href="@{/playlists/new}">Buat playlist pertama</a>
+  </section>
+  <section class="playlist-grid" th:unless="${#lists.isEmpty(playlists)}">
+    <article class="playlist-card" th:each="playlist : ${playlists}" th:classappend="'cover-' + ${playlist.coverVariant}">
+      <a class="playlist-cover" th:href="@{/playlists/{id}(id=${playlist.id})}">
+        <span class="cover-note">♫</span><span class="cover-label" th:text="${playlist.moodTag ?: 'MOODTUNE MIX'}">MOODTUNE MIX</span>
+      </a>
+      <div class="playlist-info">
+        <div class="row-between"><h2><a th:href="@{/playlists/{id}(id=${playlist.id})}" th:text="${playlist.name}">Playlist</a></h2><span class="tag" th:text="${playlist.tracks.size()} + ' lagu'">0 lagu</span></div>
+        <p class="muted clamp" th:text="${playlist.description ?: 'Belum ada deskripsi.'}">Deskripsi</p>
+        <div class="actions">
+          <a class="button small secondary" th:href="@{/playlists/{id}(id=${playlist.id})}">Buka</a>
+          <a class="button small secondary" th:href="@{/playlists/{id}/edit(id=${playlist.id})}">Edit</a>
+          <form method="post" th:action="@{/playlists/{id}/delete(id=${playlist.id})}" onsubmit="return confirm('Hapus playlist ini?')"><button class="button small danger" type="submit">Hapus</button></form>
+        </div>
+      </div>
+    </article>
+  </section>
+</main>
+</body>
+</html>

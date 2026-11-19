@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="id" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Koleksi Lagu')}"></head>
+<body>
+<div th:replace="~{layout :: header('songs')}"></div>
+<main class="container">
+  <section class="page-heading">
+    <div><p class="eyebrow">PERPUSTAKAAN MUSIK</p><h1>Koleksi lagu</h1><p class="subheading">Simpan lagu yang menemani setiap suasana.</p></div>
+    <a class="button primary" th:href="@{/songs/new}">＋ Tambah lagu</a>
+  </section>
+  <section class="empty-state" th:if="${#lists.isEmpty(songs)}">
+    <div class="empty-icon">♫</div><h2>Koleksimu masih kosong</h2><p>Tambahkan lagu pertama untuk mulai membangun perpustakaan musikmu.</p>
+    <a class="button primary" th:href="@{/songs/new}">Tambah lagu pertama</a>
+  </section>
+  <section class="table-card" th:unless="${#lists.isEmpty(songs)}">
+    <div class="table-scroll"><table>
+      <thead><tr><th>Lagu</th><th>Genre</th><th>Tahun</th><th>Catatan mood</th><th><span class="sr-only">Aksi</span></th></tr></thead>
+      <tbody>
+      <tr th:each="song : ${songs}">
+        <td><strong th:text="${song.title}">Judul</strong><span class="muted block" th:text="${song.artist}">Artis</span></td>
+        <td><span class="tag" th:text="${song.genre}">Genre</span></td>
+        <td th:text="${song.releaseYear}">2024</td>
+        <td class="muted" th:text="${song.moodNote ?: '—'}">Catatan</td>
+        <td class="actions">
+          <a class="button small secondary" th:href="@{/audio(title=${song.title},artist=${song.artist})}">Dengarkan</a>
+          <a class="button small secondary" th:href="@{/songs/{id}/edit(id=${song.id})}">Edit</a>
+          <form method="post" th:action="@{/songs/{id}/delete(id=${song.id})}" onsubmit="return confirm('Hapus lagu ini? Lagu juga akan dihapus dari playlist.')">
+            <button class="button small danger" type="submit">Hapus</button>
+          </form>
+        </td>
+      </tr>
+      </tbody>
+    </table></div>
+    <p class="table-foot" th:text="${songs.size()} + ' lagu tersimpan'">0 lagu</p>
+  </section>
+</main>
+</body>
+</html>

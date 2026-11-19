@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="id" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Tema Lagu')}"></head>
+<body>
+<div th:replace="~{layout :: header('theme')}"></div>
+<main class="container narrow">
+  <section class="page-heading"><div><p class="eyebrow">MAKNA DI BALIK MUSIK</p><h1>Eksplorasi tema lagu</h1><p class="subheading">Jelajahi cerita dan nuansa emosional sebuah lagu.</p></div></section>
+  <section class="form-card">
+    <form method="post" th:action="@{/theme}">
+      <label>Judul lagu<input name="title" type="text" maxlength="160" required th:value="${title}"></label>
+      <label>Artis<input name="artist" type="text" maxlength="160" required th:value="${artist}"></label>
+      <label>Genre <span class="muted">(opsional)</span><input name="genre" type="text" maxlength="80" th:value="${genre}"></label>
+      <button class="button primary" type="submit">Jelaskan tema lagu ✦</button>
+    </form>
+  </section>
+  <section class="answer-card error-card" th:if="${error != null}"><strong>Belum bisa menganalisis lagu</strong><p th:text="${error}"></p></section>
+  <section class="answer-card" th:if="${answer != null}"><p class="eyebrow">HASIL EKSPLORASI</p><h2 th:text="${title} + ' — ' + ${artist}">Judul lagu</h2><div class="answer-text" th:text="${answer}"></div></section>
+</main>
+</body>
+</html>

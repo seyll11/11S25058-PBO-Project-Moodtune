@@ -1,15 +1,14 @@
 {
-  "name": "react-example",
+  "name": "moodtune",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx server.ts",
-    "start": "node server.ts",
-    "build": "vite build",
-    "preview": "vite preview",
-    "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit"
+    "dev": "mvn spring-boot:run",
+    "start": "mvn spring-boot:run",
+    "build": "mvn clean package",
+    "test": "mvn test",
+    "clean": "mvn clean"
   },
   "dependencies": {
     "@google/genai": "^3.6.1",

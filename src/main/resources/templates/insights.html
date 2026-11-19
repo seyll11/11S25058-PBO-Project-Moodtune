@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="id" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Insights')}"></head>
+<body>
+<div th:replace="~{layout :: header('insights')}"></div>
+<main class="container">
+  <section class="page-heading"><div><p class="eyebrow">POLA DALAM KOLEKSIMU</p><h1>Music insights</h1><p class="subheading">Kenali cerita di balik musik dan suasana hatimu.</p></div></section>
+  <section class="stat-grid">
+    <article class="stat-card"><span class="stat-icon">♫</span><p>Total lagu</p><strong th:text="${insights.totalSongs}">0</strong></article>
+    <article class="stat-card"><span class="stat-icon">▤</span><p>Playlist</p><strong th:text="${insights.totalPlaylists}">0</strong></article>
+    <article class="stat-card"><span class="stat-icon">◉</span><p>Artis unik</p><strong th:text="${insights.uniqueArtists}">0</strong></article>
+    <article class="stat-card"><span class="stat-icon">✎</span><p>Catatan jurnal</p><strong th:text="${insights.totalJournalEntries}">0</strong></article>
+  </section>
+  <section class="insight-grid">
+    <article class="panel"><div class="panel-heading"><div><p class="eyebrow">KOLEKSI</p><h2>Genre favorit</h2></div></div>
+      <p class="empty-inline" th:if="${#lists.isEmpty(insights.genreBreakdown)}">Tambahkan lagu untuk melihat statistik genre.</p>
+      <div class="distribution" th:each="stat : ${insights.genreBreakdown}"><div class="row-between"><span th:text="${stat.key}">Genre</span><strong th:text="${stat.value}">0</strong></div><div class="bar"><span th:style="'width:' + ${(stat.value * 100.0 / insights.totalSongs)} + '%'"></span></div></div>
+    </article>
+    <article class="panel"><div class="panel-heading"><div><p class="eyebrow">RIWAYAT</p><h2>Suasana hati</h2></div></div>
+      <p class="empty-inline" th:if="${#lists.isEmpty(insights.moodBreakdown)}">Catat mood untuk mulai melihat polanya.</p>
+      <div class="distribution" th:each="stat : ${insights.moodBreakdown}"><div class="row-between"><span th:text="${stat.key}">Mood</span><strong th:text="${stat.value}">0</strong></div><div class="bar lilac"><span th:style="'width:' + ${(stat.value * 100.0 / insights.totalJournalEntries)} + '%'"></span></div></div>
+    </article>
+    <article class="panel"><div class="panel-heading"><div><p class="eyebrow">PENJELAJAHAN</p><h2>Artis teratas</h2></div></div>
+      <p class="empty-inline" th:if="${#lists.isEmpty(insights.topArtists)}">Tambahkan koleksi lagu untuk melihat artis favorit.</p>
+      <div class="distribution" th:each="stat : ${insights.topArtists}"><div class="row-between"><span th:text="${stat.key}">Artis</span><strong th:text="${stat.value}">0</strong></div><div class="bar amber"><span th:style="'width:' + ${(stat.value * 100.0 / insights.totalSongs)} + '%'"></span></div></div>
+    </article>
+    <article class="panel"><div class="panel-heading"><div><p class="eyebrow">DEKADE</p><h2>Perjalanan musik</h2></div></div>
+      <p class="empty-inline" th:if="${#lists.isEmpty(insights.decadeBreakdown)}">Belum ada data tahun rilis.</p>
+      <div class="decade-list"><span class="tag" th:each="stat : ${insights.decadeBreakdown}" th:text="${stat.key} + ' · ' + ${stat.value}">2000-an · 0</span></div>
+    </article>
+  </section>
+  <section class="summary-strip">
+    <div><span class="muted">Rentang tahun koleksi</span><strong th:text="${insights.earliestYear != null ? insights.earliestYear + ' — ' + insights.latestYear : '—'}">—</strong></div>
+    <div><span class="muted">Energi rata-rata</span><strong th:text="${insights.averageEnergy} + (${insights.averageEnergy != '—'} ? '/5' : '')">—</strong></div>
+    <div><span class="muted">Jurnal bulan ini</span><strong th:text="${insights.entriesThisMonth}">0</strong></div>
+  </section>
+</main>
+</body>
+</html>

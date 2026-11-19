@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="id" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head(${playlistId != null ? 'Edit Playlist' : 'Buat Playlist'})}"></head>
+<body>
+<div th:replace="~{layout :: header('playlists')}"></div>
+<main class="container narrow">
+  <a class="back-link" th:href="@{/playlists}">← Kembali ke playlist</a>
+  <section class="form-card">
+    <p class="eyebrow">MIX SESUAI MOOD</p>
+    <h1 th:text="${playlistId != null ? 'Edit playlist' : 'Buat playlist'}">Buat playlist</h1>
+    <form method="post" th:object="${form}" th:action="${playlistId != null ? '/playlists/' + playlistId : '/playlists'}">
+      <label>Nama playlist<input type="text" th:field="*{name}" maxlength="160" required></label>
+      <p class="field-error" th:errors="*{name}"></p>
+      <label>Deskripsi<textarea th:field="*{description}" maxlength="1000" rows="3" placeholder="Apa cerita di balik playlist ini?"></textarea></label>
+      <label>Tag mood<input type="text" th:field="*{moodTag}" maxlength="80" placeholder="Focus, Rainy day, Morning..."></label>
+      <label>Gaya cover
+        <select th:field="*{coverVariant}">
+          <option value="focus">Calm focus</option><option value="rain">Melancholy rain</option><option value="morning">Energetic morning</option>
+        </select>
+      </label>
+      <div class="form-actions"><a class="button secondary" th:href="@{/playlists}">Batal</a><button class="button primary" type="submit">Simpan playlist</button></div>
+    </form>
+  </section>
+</main>
+</body>
+</html>
