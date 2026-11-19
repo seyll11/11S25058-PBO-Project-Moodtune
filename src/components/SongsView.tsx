@@ -1,14 +1,18 @@
 import { useMemo, useState } from 'react';
 import {
+  AudioLines,
   BookOpen,
   ListPlus,
+  Music,
+  Pause,
   Pencil,
+  Play,
   Plus,
   Search,
   Trash2,
-  Music,
 } from 'lucide-react';
 import { CoverArt } from './CoverArt.tsx';
+import { useAudioPlayer } from '../context/AudioPlayerContext.tsx';
 import type { Song } from '../types/music.ts';
 
 interface SongsViewProps {
@@ -32,6 +36,12 @@ export function SongsView({
   onExplainTheme,
   onOpenAiStudio,
 }: SongsViewProps) {
+  const {
+    playTrackYouTube,
+    playSoundscape,
+    isTrackPlaying,
+    isTrackSelected,
+  } = useAudioPlayer();
   const [query, setQuery] = useState('');
   const [selectedGenre, setSelectedGenre] = useState<string>('Semua');
   const [sortBy, setSortBy] = useState<'newest' | 'year_desc' | 'title_asc'>(
@@ -222,93 +232,141 @@ export function SongsView({
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/80 text-sm">
-                {filteredSongs.map((song, idx) => (
-                  <tr
-                    key={song.id}
-                    className="group hover:bg-zinc-50/90 dark:hover:bg-zinc-800/40 transition-colors"
-                  >
-                    <td className="py-3 pl-5 pr-3 font-mono text-xs text-zinc-400 tabular-nums">
-                      {String(idx + 1).padStart(2, '0')}
-                    </td>
-                    <td className="py-3 px-3">
-                      <p className="font-medium text-zinc-950 dark:text-zinc-50">
-                        {song.title}
-                      </p>
-                      {song.moodNote && (
-                        <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400 line-clamp-1">
-                          {song.moodNote}
+                {filteredSongs.map((song, idx) => {
+                  const playing = isTrackPlaying(song.title, song.artist);
+                  const selected = isTrackSelected(song.title, song.artist);
+                  return (
+                    <tr
+                      key={song.id}
+                      className="group hover:bg-zinc-50/90 dark:hover:bg-zinc-800/40 transition-colors"
+                    >
+                      <td className="py-3 pl-5 pr-3 font-mono text-xs text-zinc-400 tabular-nums">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void playTrackYouTube(
+                              {
+                                title: song.title,
+                                artist: song.artist,
+                                genre: song.genre,
+                              },
+                              filteredSongs.map((s) => ({
+                                title: s.title,
+                                artist: s.artist,
+                                genre: s.genre,
+                              }))
+                            )
+                          }
+                          title="Putar lagu penuh via YouTube"
+                          aria-label={playing ? `Jeda ${song.title}` : `Putar ${song.title}`}
+                          className={`inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
+                            selected
+                              ? 'bg-blue-600 text-white'
+                              : 'text-zinc-500 hover:bg-zinc-200/70 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50'
+                          }`}
+                        >
+                          {playing ? (
+                            <Pause className="h-3.5 w-3.5" />
+                          ) : (
+                            <Play className="h-3.5 w-3.5 ml-0.5" />
+                          )}
+                        </button>
+                      </td>
+                      <td className="py-3 px-3">
+                        <p className="font-medium text-zinc-950 dark:text-zinc-50">
+                          {song.title}
                         </p>
-                      )}
-                    </td>
-                    <td className="py-3 px-3 text-zinc-700 dark:text-zinc-300">
-                      {song.artist}
-                    </td>
-                    <td className="py-3 px-3 text-zinc-600 dark:text-zinc-400">
-                      {song.genre}
-                    </td>
-                    <td className="py-3 px-3 text-right font-mono text-xs text-zinc-600 dark:text-zinc-400 tabular-nums">
-                      {song.releaseYear}
-                    </td>
-                    <td className="py-3 pl-3 pr-5">
-                      <div className="flex items-center justify-end gap-1">
-                        {confirmDeleteId === song.id ? (
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              type="button"
-                              disabled={deletingId === song.id}
-                              onClick={() => handleConfirmDelete(song.id)}
-                              className="rounded-lg bg-red-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-red-700"
-                            >
-                              {deletingId === song.id ? 'Menghapus...' : 'Hapus'}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setConfirmDeleteId(null)}
-                              className="rounded-lg border border-zinc-200 px-2.5 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                            >
-                              Batal
-                            </button>
-                          </div>
-                        ) : (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => onExplainTheme(song)}
-                              title="Jelaskan Tema Lagu"
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-100 hover:text-blue-600 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-blue-400 transition-colors"
-                            >
-                              <BookOpen className="h-4 w-4" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => onAssignPlaylist(song)}
-                              title="Masukkan ke Playlist"
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-100 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50 transition-colors"
-                            >
-                              <ListPlus className="h-4 w-4" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => onEditSong(song)}
-                              title="Edit Lagu"
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-100 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50 transition-colors"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setConfirmDeleteId(song.id)}
-                              title="Hapus Lagu"
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 hover:bg-red-50 hover:text-red-600 dark:text-zinc-400 dark:hover:bg-red-950/40 dark:hover:text-red-400 transition-colors"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </>
+                        {song.moodNote && (
+                          <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400 line-clamp-1">
+                            {song.moodNote}
+                          </p>
                         )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="py-3 px-3 text-zinc-700 dark:text-zinc-300">
+                        {song.artist}
+                      </td>
+                      <td className="py-3 px-3 text-zinc-600 dark:text-zinc-400">
+                        {song.genre}
+                      </td>
+                      <td className="py-3 px-3 text-right font-mono text-xs text-zinc-600 dark:text-zinc-400 tabular-nums">
+                        {song.releaseYear}
+                      </td>
+                      <td className="py-3 pl-3 pr-5">
+                        <div className="flex items-center justify-end gap-1">
+                          {confirmDeleteId === song.id ? (
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                disabled={deletingId === song.id}
+                                onClick={() => handleConfirmDelete(song.id)}
+                                className="rounded-lg bg-red-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-red-700"
+                              >
+                                {deletingId === song.id ? 'Menghapus...' : 'Hapus'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setConfirmDeleteId(null)}
+                                className="rounded-lg border border-zinc-200 px-2.5 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                              >
+                                Batal
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  void playSoundscape({
+                                    moodOrPrompt: `${song.title} oleh ${song.artist} (${song.genre})`,
+                                    title: song.title,
+                                    artist: song.artist,
+                                    genre: song.genre,
+                                  })
+                                }
+                                title="Putar AI Mood Soundscape"
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-100 hover:text-blue-600 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-blue-400 transition-colors"
+                              >
+                                <AudioLines className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => onExplainTheme(song)}
+                                title="Jelaskan Tema Lagu"
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-100 hover:text-blue-600 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-blue-400 transition-colors"
+                              >
+                                <BookOpen className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => onAssignPlaylist(song)}
+                                title="Masukkan ke Playlist"
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-100 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50 transition-colors"
+                              >
+                                <ListPlus className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => onEditSong(song)}
+                                title="Edit Lagu"
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-100 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50 transition-colors"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setConfirmDeleteId(song.id)}
+                                title="Hapus Lagu"
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 hover:bg-red-50 hover:text-red-600 dark:text-zinc-400 dark:hover:bg-red-950/40 dark:hover:text-red-400 transition-colors"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -340,15 +398,62 @@ export function SongsView({
                   </p>
                 )}
 
-                <div className="flex items-center justify-between gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => onExplainTheme(song)}
-                    className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-zinc-200 px-3 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
-                  >
-                    <BookOpen className="h-3.5 w-3.5" />
-                    <span>Tema</span>
-                  </button>
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void playTrackYouTube(
+                          {
+                            title: song.title,
+                            artist: song.artist,
+                            genre: song.genre,
+                          },
+                          filteredSongs.map((s) => ({
+                            title: s.title,
+                            artist: s.artist,
+                            genre: s.genre,
+                          }))
+                        )
+                      }
+                      className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white"
+                    >
+                      {isTrackPlaying(song.title, song.artist) ? (
+                        <>
+                          <Pause className="h-3.5 w-3.5" />
+                          <span>Jeda</span>
+                        </>
+                      ) : (
+                        <>
+                          <Play className="h-3.5 w-3.5" />
+                          <span>Putar</span>
+                        </>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void playSoundscape({
+                          moodOrPrompt: `${song.title} oleh ${song.artist} (${song.genre})`,
+                          title: song.title,
+                          artist: song.artist,
+                          genre: song.genre,
+                        })
+                      }
+                      aria-label="Putar AI Soundscape"
+                      className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-zinc-200 text-zinc-700 dark:border-zinc-700 dark:text-zinc-200"
+                    >
+                      <AudioLines className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onExplainTheme(song)}
+                      className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-zinc-200 px-3 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                    >
+                      <BookOpen className="h-3.5 w-3.5" />
+                      <span>Tema</span>
+                    </button>
+                  </div>
 
                   <div className="flex items-center gap-1">
                     {confirmDeleteId === song.id ? (

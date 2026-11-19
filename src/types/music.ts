@@ -72,3 +72,42 @@ export interface LyricsThemeExplanation {
   keyMotifs: string[];
   listeningContext: string;
 }
+
+export interface AudioPreviewResult {
+  found: boolean;
+  previewUrl: string | null;
+  trackName?: string;
+  artistName?: string;
+  collectionName?: string;
+  trackViewUrl?: string;
+  message?: string;
+}
+
+export interface SoundscapeChord {
+  name: string;
+  frequencies: number[];
+  melodyFrequencies: number[];
+}
+
+export interface SoundscapeBlueprint {
+  title: string;
+  moodDescription: string;
+  bpm: number;
+  waveform: 'sine' | 'triangle' | 'warm-pad';
+  scaleName: string;
+  chords: SoundscapeChord[];
+}
+
+export interface YouTubeCandidate {
+  videoId: string;
+  title: string;
+  channel: string;
+  durationText?: string;
+  watchUrl: string;
+}
+
+export interface YouTubeSearchResult {
+  found: boolean;
+  candidates: YouTubeCandidate[];
+  message?: string;
+}

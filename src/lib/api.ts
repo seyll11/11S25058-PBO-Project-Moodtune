@@ -1,5 +1,6 @@
 import { auth } from './firebase.ts';
 import type {
+  AudioPreviewResult,
   CoverVariant,
   GeneratedPlaylistDraft,
   LyricsThemeExplanation,
@@ -8,7 +9,9 @@ import type {
   PlaylistDetail,
   RecommendedTrack,
   Song,
+  SoundscapeBlueprint,
   UserProfile,
+  YouTubeSearchResult,
 } from '../types/music.ts';
 
 async function authFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
@@ -151,6 +154,28 @@ export const api = {
     genre?: string;
   }) =>
     authFetch<{ explanation: LyricsThemeExplanation }>('/api/ai/explain-theme', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  getAudioPreview: (title: string, artist: string) =>
+    authFetch<AudioPreviewResult>(
+      `/api/audio/preview?title=${encodeURIComponent(
+        title
+      )}&artist=${encodeURIComponent(artist)}`
+    ),
+  searchYouTube: (title: string, artist: string) =>
+    authFetch<YouTubeSearchResult>(
+      `/api/audio/youtube?title=${encodeURIComponent(
+        title
+      )}&artist=${encodeURIComponent(artist)}`
+    ),
+  composeSoundscape: (payload: {
+    moodOrPrompt: string;
+    title?: string;
+    artist?: string;
+    genre?: string;
+  }) =>
+    authFetch<{ blueprint: SoundscapeBlueprint }>('/api/ai/soundscape', {
       method: 'POST',
       body: JSON.stringify(payload),
     }),

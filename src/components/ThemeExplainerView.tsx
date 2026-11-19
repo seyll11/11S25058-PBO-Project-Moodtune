@@ -146,9 +146,21 @@ export function ThemeExplainerView({ songs }: ThemeExplainerViewProps) {
       {/* Right Result Area */}
       <div className="lg:col-span-7">
         {error && (
-          <div className="mb-4 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200">
-            <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
-            <span>{error}</span>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200">
+            <div className="flex items-start gap-2.5 flex-1 min-w-[200px]">
+              <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+              <span>{error}</span>
+            </div>
+            {title.trim() && artist.trim() && (
+              <button
+                type="button"
+                onClick={() => runExplain(title.trim(), artist.trim(), genre.trim())}
+                disabled={loading}
+                className="min-h-[36px] rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100 dark:border-red-800 dark:bg-red-950 dark:text-red-200 dark:hover:bg-red-900/60 shrink-0"
+              >
+                Coba Lagi
+              </button>
+            )}
           </div>
         )}
 

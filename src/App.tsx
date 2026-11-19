@@ -14,6 +14,7 @@ import {
   X,
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext.tsx';
+import { AudioPlayerProvider } from './context/AudioPlayerContext.tsx';
 import { AuthGate } from './components/AuthGate.tsx';
 import { SongsView } from './components/SongsView.tsx';
 import { PlaylistsView } from './components/PlaylistsView.tsx';
@@ -24,6 +25,7 @@ import { SongModal } from './components/SongModal.tsx';
 import { PlaylistModal } from './components/PlaylistModal.tsx';
 import { AddToPlaylistModal } from './components/AddToPlaylistModal.tsx';
 import { ThemeExplainerDrawer } from './components/ThemeExplainerDrawer.tsx';
+import { AudioPlayerBar } from './components/AudioPlayerBar.tsx';
 import { api } from './lib/api.ts';
 import type {
   CoverVariant,
@@ -405,7 +407,8 @@ function MoodTuneAppShell({
         </header>
 
         {/* Main Viewport */}
-        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 pb-24 sm:px-6 lg:px-8 lg:py-8 lg:pb-12">
+        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 pb-24 sm:px-6 lg:px-8 lg:py-8 lg:pb-24">
+          <AudioPlayerBar />
           {dataError && (
             <div className="mb-6 flex items-start justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200">
               <div className="flex items-start gap-2.5">
@@ -583,7 +586,7 @@ function MoodTuneAppShell({
       {toast && (
         <div
           role="status"
-          className="fixed bottom-20 right-4 z-50 flex items-center gap-2.5 rounded-xl border border-zinc-200 bg-zinc-950 px-4 py-3 text-sm font-medium text-white shadow-lg dark:border-zinc-700 dark:bg-zinc-800 lg:bottom-6 lg:right-6"
+          className="fixed bottom-20 right-4 z-50 flex items-center gap-2.5 rounded-xl border border-zinc-200 bg-zinc-950 px-4 py-3 text-sm font-medium text-white shadow-lg dark:border-zinc-700 dark:bg-zinc-800 lg:bottom-auto lg:top-20 lg:right-6"
         >
           <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
           <span>{toast}</span>
@@ -625,7 +628,9 @@ export default function App() {
 
   return (
     <AuthProvider>
-      <MoodTuneAppShell isDark={isDark} onToggleTheme={toggleTheme} />
+      <AudioPlayerProvider>
+        <MoodTuneAppShell isDark={isDark} onToggleTheme={toggleTheme} />
+      </AudioPlayerProvider>
     </AuthProvider>
   );
 }

@@ -20,10 +20,13 @@ import {
   updateSongForUser,
 } from './src/db/music.ts';
 import {
+  composeMoodSoundscape,
   explainSongLyricsTheme,
+  GeminiServiceError,
   generatePlaylistDraft,
   recommendSongsByMood,
 } from './src/services/gemini.ts';
+import { findYouTubeCandidates } from './src/services/youtube.ts';
 import type { CoverVariant } from './src/types/music.ts';
 
 dotenv.config();
@@ -374,11 +377,12 @@ async function startServer() {
       res.json(data);
     } catch (error: unknown) {
       console.error('AI recommend error:', error);
+      const status = error instanceof GeminiServiceError ? error.statusCode : 500;
       const message =
         error instanceof Error
           ? error.message
           : 'Gagal mendapatkan rekomendasi AI. Coba lagi sebentar.';
-      res.status(500).json({ error: message });
+      res.status(status).json({ error: message });
     }
   });
 
@@ -398,11 +402,12 @@ async function startServer() {
       res.json({ draft });
     } catch (error: unknown) {
       console.error('AI generate playlist error:', error);
+      const status = error instanceof GeminiServiceError ? error.statusCode : 500;
       const message =
         error instanceof Error
           ? error.message
           : 'Gagal menyusun playlist otomatis dengan AI.';
-      res.status(500).json({ error: message });
+      res.status(status).json({ error: message });
     }
   });
 
@@ -454,11 +459,145 @@ async function startServer() {
       res.json({ explanation });
     } catch (error: unknown) {
       console.error('AI explain theme error:', error);
+      const status = error instanceof GeminiServiceError ? error.statusCode : 500;
       const message =
         error instanceof Error
           ? error.message
           : 'Gagal menganalisis tema lagu. Coba lagi.';
-      res.status(500).json({ error: message });
+      res.status(status).json({ error: message });
+    }
+  });
+
+  app.post('/api/ai/soundscape', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const { moodOrPrompt, title, artist, genre } = req.body || {};
+      const promptText =
+        typeof moodOrPrompt === 'string' && moodOrPrompt.trim()
+          ? moodOrPrompt.trim()
+          : title
+            ? `Suasana lagu ${title}`
+            : '';
+
+      if (!promptText) {
+        res.status(400).json({ error: 'Suasana atau informasi lagu wajib diisi.' });
+        return;
+      }
+
+      const blueprint = await composeMoodSoundscape({
+        moodOrPrompt: promptText,
+        title: typeof title === 'string' ? title.trim() : undefined,
+        artist: typeof artist === 'string' ? artist.trim() : undefined,
+        genre: typeof genre === 'string' ? genre.trim() : undefined,
+      });
+      res.json({ blueprint });
+    } catch (error: unknown) {
+      console.error('AI soundscape error:', error);
+      const status = error instanceof GeminiServiceError ? error.statusCode : 500;
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Gagal menyusun audio soundscape AI.';
+      res.status(status).json({ error: message });
+    }
+  });
+
+  app.get('/api/audio/preview', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const title = String(req.query.title || '').trim();
+      const artist = String(req.query.artist || '').trim();
+      if (!title) {
+        res.status(400).json({ error: 'Parameter judul lagu wajib diisi.' });
+        return;
+      }
+
+      const term = artist ? `${title} ${artist}` : title;
+      const searchUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(
+        term
+      )}&media=music&entity=song&limit=6`;
+
+      const upstream = await fetch(searchUrl, {
+        headers: { Accept: 'application/json' },
+      });
+      if (!upstream.ok) {
+        res.status(502).json({
+          found: false,
+          previewUrl: null,
+          message: 'Layanan pencarian pratinjau audio sedang tidak merespons.',
+        });
+        return;
+      }
+
+      const json = (await upstream.json()) as {
+        results?: Array<{
+          trackName?: string;
+          artistName?: string;
+          collectionName?: string;
+          previewUrl?: string;
+          trackViewUrl?: string;
+        }>;
+      };
+
+      const candidates = (json.results || []).filter((r) => Boolean(r.previewUrl));
+      if (candidates.length === 0) {
+        res.json({
+          found: false,
+          previewUrl: null,
+          message:
+            'Cuplikan audio resmi 30 detik belum tersedia untuk lagu ini. Gunakan AI Mood Soundscape sebagai alternatif!',
+        });
+        return;
+      }
+
+      const titleLower = title.toLowerCase();
+      const artistLower = artist.toLowerCase();
+
+      const best =
+        candidates.find(
+          (c) =>
+            (c.trackName || '').toLowerCase().includes(titleLower) &&
+            (!artistLower ||
+              (c.artistName || '').toLowerCase().includes(artistLower))
+        ) ||
+        candidates.find((c) =>
+          (c.trackName || '').toLowerCase().includes(titleLower)
+        ) ||
+        candidates[0];
+
+      res.json({
+        found: true,
+        previewUrl: best.previewUrl || null,
+        trackName: best.trackName || title,
+        artistName: best.artistName || artist,
+        collectionName: best.collectionName || undefined,
+        trackViewUrl: best.trackViewUrl || undefined,
+      });
+    } catch (error) {
+      console.error('Audio preview lookup error:', error);
+      res.status(500).json({
+        found: false,
+        previewUrl: null,
+        message: 'Gagal mencari pratinjau audio untuk lagu ini.',
+      });
+    }
+  });
+
+  app.get('/api/audio/youtube', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const title = String(req.query.title || '').trim();
+      const artist = String(req.query.artist || '').trim();
+      if (!title) {
+        res.status(400).json({ error: 'Parameter judul lagu wajib diisi.' });
+        return;
+      }
+      const result = await findYouTubeCandidates(title, artist);
+      res.json(result);
+    } catch (error) {
+      console.error('YouTube lookup error:', error);
+      res.status(500).json({
+        found: false,
+        candidates: [],
+        message: 'Gagal mencari video YouTube untuk lagu ini.',
+      });
     }
   });
 

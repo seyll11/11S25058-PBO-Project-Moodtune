@@ -1,15 +1,19 @@
 import React, { useState } from 'react';
 import {
+  AlertCircle,
+  AudioLines,
   BookOpen,
   Check,
   ListPlus,
+  Pause,
+  Play,
   Plus,
   Sparkles,
   Trash2,
-  AlertCircle,
 } from 'lucide-react';
 import { api } from '../lib/api.ts';
 import { CoverArt } from './CoverArt.tsx';
+import { useAudioPlayer } from '../context/AudioPlayerContext.tsx';
 import type {
   CoverVariant,
   GeneratedPlaylistDraft,
@@ -43,6 +47,7 @@ export function AiStudioView({
   onExplainTheme,
   onPlaylistGeneratedAndSaved,
 }: AiStudioViewProps) {
+  const { playTrackYouTube, playSoundscape, isTrackPlaying } = useAudioPlayer();
   const [mode, setMode] = useState<'recommend' | 'generator'>(initialTab);
 
   // Recommender state
@@ -240,9 +245,21 @@ export function AiStudioView({
           </div>
 
           {recError && (
-            <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200">
-              <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
-              <span>{recError}</span>
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200">
+              <div className="flex items-start gap-2.5 flex-1 min-w-[200px]">
+                <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+                <span>{recError}</span>
+              </div>
+              {moodInput.trim() && (
+                <button
+                  type="button"
+                  onClick={() => handleRunRecommend()}
+                  disabled={recLoading}
+                  className="min-h-[36px] rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100 dark:border-red-800 dark:bg-red-950 dark:text-red-200 dark:hover:bg-red-900/60 shrink-0"
+                >
+                  Coba Lagi
+                </button>
+              )}
             </div>
           )}
 
@@ -261,13 +278,27 @@ export function AiStudioView({
 
           {recResult && !recLoading && (
             <div className="rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 overflow-hidden">
-              <div className="border-b border-zinc-200 px-6 py-5 dark:border-zinc-800">
-                <p className="text-xs font-medium text-blue-600 dark:text-blue-400">
-                  Kurasi Suasana · {recResult.moodSummary}
-                </p>
-                <p className="mt-1.5 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
-                  {recResult.curationNote}
-                </p>
+              <div className="flex flex-col gap-4 border-b border-zinc-200 px-6 py-5 dark:border-zinc-800 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                    Kurasi Suasana · {recResult.moodSummary}
+                  </p>
+                  <p className="mt-1.5 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+                    {recResult.curationNote}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    void playSoundscape({
+                      moodOrPrompt: moodInput.trim() || recResult.moodSummary,
+                    })
+                  }
+                  className="inline-flex min-h-[42px] items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-xs font-semibold text-zinc-800 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-800 transition-colors whitespace-nowrap shrink-0"
+                >
+                  <AudioLines className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <span>Putar AI Mood Soundscape</span>
+                </button>
               </div>
 
               <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -308,6 +339,37 @@ export function AiStudioView({
                       </div>
 
                       <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void playTrackYouTube(
+                              {
+                                title: track.title,
+                                artist: track.artist,
+                                genre: track.genre,
+                              },
+                              recResult.recommendations.map((r) => ({
+                                title: r.title,
+                                artist: r.artist,
+                                genre: r.genre,
+                              }))
+                            )
+                          }
+                          title="Putar lagu penuh via YouTube"
+                          className="inline-flex min-h-[40px] items-center gap-1.5 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-semibold text-zinc-800 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-800 whitespace-nowrap"
+                        >
+                          {isTrackPlaying(track.title, track.artist) ? (
+                            <>
+                              <Pause className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                              <span>Jeda</span>
+                            </>
+                          ) : (
+                            <>
+                              <Play className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                              <span>Dengar</span>
+                            </>
+                          )}
+                        </button>
                         <button
                           type="button"
                           onClick={() => onExplainTheme(track)}
@@ -399,9 +461,21 @@ export function AiStudioView({
           </div>
 
           {genError && (
-            <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200">
-              <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
-              <span>{genError}</span>
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200">
+              <div className="flex items-start gap-2.5 flex-1 min-w-[200px]">
+                <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+                <span>{genError}</span>
+              </div>
+              {themeInput.trim() && (
+                <button
+                  type="button"
+                  onClick={(e) => handleRunGenerator(e as unknown as React.FormEvent)}
+                  disabled={genLoading}
+                  className="min-h-[36px] rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100 dark:border-red-800 dark:bg-red-950 dark:text-red-200 dark:hover:bg-red-900/60 shrink-0"
+                >
+                  Coba Lagi
+                </button>
+              )}
             </div>
           )}
 
@@ -531,6 +605,32 @@ export function AiStudioView({
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          void playTrackYouTube(
+                            {
+                              title: track.title,
+                              artist: track.artist,
+                              genre: track.genre,
+                            },
+                            draft.tracks.map((t) => ({
+                              title: t.title,
+                              artist: t.artist,
+                              genre: t.genre,
+                            }))
+                          )
+                        }
+                        title="Putar lagu penuh via YouTube"
+                        aria-label={`Dengar ${track.title} via YouTube`}
+                        className="inline-flex min-h-[40px] min-w-[40px] items-center justify-center rounded-lg text-zinc-600 hover:bg-zinc-100 hover:text-blue-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                      >
+                        {isTrackPlaying(track.title, track.artist) ? (
+                          <Pause className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        ) : (
+                          <Play className="h-4 w-4" />
+                        )}
+                      </button>
                       <button
                         type="button"
                         onClick={() => onExplainTheme(track)}

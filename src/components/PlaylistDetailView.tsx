@@ -1,18 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  AlertCircle,
+  ArrowDown,
   ArrowLeft,
   ArrowUp,
-  ArrowDown,
+  AudioLines,
   BookOpen,
   Check,
+  Pause,
   Pencil,
+  Play,
   Plus,
   Trash2,
   X,
-  AlertCircle,
 } from 'lucide-react';
 import { api } from '../lib/api.ts';
 import { CoverArt } from './CoverArt.tsx';
+import { useAudioPlayer } from '../context/AudioPlayerContext.tsx';
 import type { Playlist, PlaylistDetail, Song } from '../types/music.ts';
 
 interface PlaylistDetailViewProps {
@@ -32,6 +36,8 @@ export function PlaylistDetailView({
   onExplainTheme,
   onPlaylistUpdated,
 }: PlaylistDetailViewProps) {
+  const { playTrackYouTube, playSoundscape, isTrackPlaying, isTrackSelected } =
+    useAudioPlayer();
   const [detail, setDetail] = useState<PlaylistDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -215,16 +221,57 @@ export function PlaylistDetailView({
           )}
 
           <div className="flex flex-wrap items-center gap-3 pt-2">
+            {detail.tracks.length > 0 && (
+              <button
+                type="button"
+                onClick={() =>
+                  void playTrackYouTube(
+                    {
+                      title: detail.tracks[0].title,
+                      artist: detail.tracks[0].artist,
+                      genre: detail.tracks[0].genre,
+                    },
+                    detail.tracks.map((t) => ({
+                      title: t.title,
+                      artist: t.artist,
+                      genre: t.genre,
+                    }))
+                  )
+                }
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors whitespace-nowrap"
+              >
+                <Play className="h-4 w-4" />
+                <span>Putar Playlist</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {
                 setSelectedSongIds([]);
                 setPickerOpen(true);
               }}
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors whitespace-nowrap"
+              className={`inline-flex min-h-[44px] items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors whitespace-nowrap ${
+                detail.tracks.length > 0
+                  ? 'border border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
             >
               <Plus className="h-4 w-4" />
               <span>Tambah Lagu dari Koleksi</span>
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                void playSoundscape({
+                  moodOrPrompt: detail.moodTag
+                    ? `${detail.name} — suasana ${detail.moodTag}`
+                    : detail.name,
+                })
+              }
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700 transition-colors whitespace-nowrap"
+            >
+              <AudioLines className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <span>AI Soundscape</span>
             </button>
             <button
               type="button"
@@ -258,30 +305,63 @@ export function PlaylistDetailView({
         </div>
       ) : (
         <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 divide-y divide-zinc-100 dark:divide-zinc-800">
-          {detail.tracks.map((track, idx) => (
-            <div
-              key={track.id}
-              className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors"
-            >
-              <div className="flex items-center gap-4 min-w-0">
-                <span className="font-mono text-xs text-zinc-400 tabular-nums w-6 shrink-0">
-                  {String(idx + 1).padStart(2, '0')}
-                </span>
-                <div className="min-w-0">
-                  <p className="font-medium text-zinc-950 dark:text-zinc-50 truncate">
-                    {track.title}
-                  </p>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                    <span>{track.artist}</span>
-                    <span aria-hidden="true"> · </span>
-                    <span>{track.genre}</span>
-                    <span aria-hidden="true"> · </span>
-                    <span className="font-mono tabular-nums">
-                      {track.releaseYear}
-                    </span>
-                  </p>
+          {detail.tracks.map((track, idx) => {
+            const playing = isTrackPlaying(track.title, track.artist);
+            const selected = isTrackSelected(track.title, track.artist);
+            return (
+              <div
+                key={track.id}
+                className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors"
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void playTrackYouTube(
+                        {
+                          title: track.title,
+                          artist: track.artist,
+                          genre: track.genre,
+                        },
+                        detail.tracks.map((t) => ({
+                          title: t.title,
+                          artist: t.artist,
+                          genre: t.genre,
+                        }))
+                      )
+                    }
+                    title="Putar lagu penuh via YouTube"
+                    aria-label={playing ? `Jeda ${track.title}` : `Putar ${track.title}`}
+                    className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                      selected
+                        ? 'bg-blue-600 text-white'
+                        : 'border border-zinc-200 text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800'
+                    }`}
+                  >
+                    {playing ? (
+                      <Pause className="h-4 w-4" />
+                    ) : (
+                      <Play className="h-4 w-4 ml-0.5" />
+                    )}
+                  </button>
+                  <span className="font-mono text-xs text-zinc-400 tabular-nums w-5 shrink-0">
+                    {String(idx + 1).padStart(2, '0')}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="font-medium text-zinc-950 dark:text-zinc-50 truncate">
+                      {track.title}
+                    </p>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                      <span>{track.artist}</span>
+                      <span aria-hidden="true"> · </span>
+                      <span>{track.genre}</span>
+                      <span aria-hidden="true"> · </span>
+                      <span className="font-mono tabular-nums">
+                        {track.releaseYear}
+                      </span>
+                    </p>
+                  </div>
                 </div>
-              </div>
 
               <div className="flex items-center justify-end gap-1 shrink-0">
                 <button
@@ -312,8 +392,8 @@ export function PlaylistDetailView({
                 </button>
                 <button
                   type="button"
-                  disabled={busyTrackId === track.id}
                   onClick={() => handleRemoveTrack(track.id)}
+                  disabled={busyTrackId === track.id}
                   aria-label="Keluarkan lagu dari playlist"
                   className="inline-flex min-h-[40px] min-w-[40px] items-center justify-center rounded-lg text-zinc-500 hover:bg-red-50 hover:text-red-600 dark:text-zinc-400 dark:hover:bg-red-950/40 dark:hover:text-red-400"
                 >
@@ -321,7 +401,8 @@ export function PlaylistDetailView({
                 </button>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
