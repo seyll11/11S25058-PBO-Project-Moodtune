@@ -19,6 +19,8 @@ import jakarta.validation.Valid;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.bind.support.SessionStatus;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
@@ -292,8 +294,8 @@ public class MoodTuneController {
                 model.addAttribute("draft", draft);
             } catch (IllegalStateException exception) {
                 model.addAttribute("error", exception.getMessage());
-            } catch (org.springframework.web.client.RestClientException exception) {
-                model.addAttribute("error", "Layanan Gemini gagal dihubungi. Periksa koneksi, API key, dan kuota.");
+            } catch (RestClientException exception) {
+                model.addAttribute("error", geminiError(exception));
             }
             return "ai";
         }
@@ -301,8 +303,8 @@ public class MoodTuneController {
             model.addAttribute("answer", gemini.answer("recommend", prompt.trim(), music.songs()));
         } catch (IllegalStateException exception) {
             model.addAttribute("error", exception.getMessage());
-        } catch (org.springframework.web.client.RestClientException exception) {
-            model.addAttribute("error", "Layanan Gemini gagal dihubungi. Periksa koneksi, API key, dan kuota.");
+        } catch (RestClientException exception) {
+            model.addAttribute("error", geminiError(exception));
         }
         return "ai";
     }
@@ -335,8 +337,8 @@ public class MoodTuneController {
             model.addAttribute("soundscapeJson", objectMapper.writeValueAsString(blueprint));
         } catch (IllegalStateException exception) {
             model.addAttribute("soundscapeError", exception.getMessage());
-        } catch (org.springframework.web.client.RestClientException exception) {
-            model.addAttribute("soundscapeError", "Layanan Gemini gagal dihubungi. Periksa koneksi, API key, dan kuota.");
+        } catch (RestClientException exception) {
+            model.addAttribute("soundscapeError", geminiError(exception));
         } catch (JsonProcessingException exception) {
             throw new IllegalStateException("Gagal menyiapkan soundscape untuk pemutar.", exception);
         }
@@ -361,9 +363,16 @@ public class MoodTuneController {
         if (title != null && !title.isBlank()) {
             try {
                 model.addAttribute("preview", audio.findPreview(title.trim(), artist == null ? "" : artist.trim()));
-                model.addAttribute("videos", audio.findVideos(title.trim(), artist == null ? "" : artist.trim()));
             } catch (org.springframework.web.client.RestClientException exception) {
-                model.addAttribute("audioError", "Layanan audio tidak dapat dihubungi. Coba kembali beberapa saat lagi.");
+                model.addAttribute("previewError",
+                        "Pratinjau audio tidak dapat dimuat. Pemutar YouTube tetap bisa digunakan.");
+            }
+            String artistName = artist == null ? "" : artist.trim();
+            try {
+                model.addAttribute("videos", audio.findVideos(title.trim(), artistName));
+            } catch (org.springframework.web.client.RestClientException exception) {
+                model.addAttribute("videos", new AudioLookupService.VideoSearch(List.of(),
+                        "Pencarian video gagal dimuat. Periksa koneksi internet lalu coba lagi."));
             }
         }
         return "audio";
@@ -385,8 +394,8 @@ public class MoodTuneController {
                 model.addAttribute("answer", gemini.answer("theme", prompt, music.songs()));
             } catch (IllegalStateException exception) {
                 model.addAttribute("error", exception.getMessage());
-            } catch (org.springframework.web.client.RestClientException exception) {
-                model.addAttribute("error", "Layanan Gemini gagal dihubungi. Periksa koneksi, API key, dan kuota.");
+            } catch (RestClientException exception) {
+                model.addAttribute("error", geminiError(exception));
             }
         }
         return "theme";
@@ -402,6 +411,21 @@ public class MoodTuneController {
     private Song linkedSong(Long id) {
         return id == null ? null : songs.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Lagu yang ditautkan tidak ditemukan."));
+    }
+
+    static String geminiError(RestClientException exception) {
+        if (exception instanceof RestClientResponseException responseException) {
+            int status = responseException.getStatusCode().value();
+            return switch (status) {
+                case 400 -> "Gemini menolak permintaan (HTTP 400). Periksa isi permintaan dan nama model.";
+                case 401 -> "API key Gemini tidak valid atau tidak diotorisasi (HTTP 401).";
+                case 403 -> "Akses Gemini ditolak (HTTP 403). Periksa izin API dan pembatasan pada key.";
+                case 404 -> "Model Gemini tidak ditemukan (HTTP 404). Periksa pengaturan GEMINI_MODEL.";
+                case 429 -> "Kuota atau batas permintaan Gemini tercapai (HTTP 429).";
+                default -> "Gemini mengembalikan error HTTP " + status + ". Periksa izin API dan kuota.";
+            };
+        }
+        return "Gemini tidak dapat dihubungi. Periksa koneksi internet dan coba lagi.";
     }
 
     private void addJournalFormOptions(Model model) {

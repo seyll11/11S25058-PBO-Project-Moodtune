@@ -6,14 +6,14 @@
 <main class="container">
   <section class="page-heading"><div><p class="eyebrow">KURASI CERDAS</p><h1>AI Studio</h1><p class="subheading">Temukan musik dan susun ide playlist dari suasana hatimu.</p></div><span class="ai-badge">✦ Gemini AI</span></section>
   <section class="ai-grid">
-    <article class="ai-card"><div class="ai-card-icon">⌁</div><h2>Rekomendasi mood</h2><p class="muted">Ceritakan suasana atau aktivitasmu. AI akan menyarankan musik dengan mempertimbangkan koleksimu.</p>
-      <form method="post" th:action="@{/ai}"><input type="hidden" name="mode" value="recommend"><label>Suasana atau aktivitas<textarea name="prompt" rows="4" placeholder="Contoh: ingin fokus bekerja saat hujan..." required th:text="${mode == 'recommend' ? prompt : ''}"></textarea></label><button class="button primary" type="submit">Dapatkan rekomendasi ✦</button></form>
+    <article class="ai-card"><div class="ai-card-icon">⌁</div><h2>Rekomendasi mood</h2><p class="muted">Ceritakan suasana atau aktivitasmu. AI mencari lagu baru yang beragam dan hanya mencampurkan lagu koleksimu bila cocok.</p>
+      <form class="ai-request-form" method="post" th:action="@{/ai}"><input type="hidden" name="mode" value="recommend"><label>Suasana atau aktivitas<textarea name="prompt" rows="4" placeholder="Contoh: ingin fokus bekerja saat hujan..." required th:text="${mode == 'recommend' ? prompt : ''}"></textarea></label><button class="button primary ai-submit-button" type="submit">Dapatkan rekomendasi ✦</button><span class="ai-loading" role="status" aria-live="polite" hidden><span class="loading-spinner" aria-hidden="true"></span>AI sedang menyiapkan jawaban…</span></form>
     </article>
     <article class="ai-card"><div class="ai-card-icon">▤</div><h2>Rancang playlist</h2><p class="muted">Buat rancangan playlist baru berdasarkan tema, momen, atau aktivitas.</p>
-      <form method="post" th:action="@{/ai}"><input type="hidden" name="mode" value="playlist"><label>Tema playlist<textarea name="prompt" rows="4" placeholder="Contoh: perjalanan malam di kota..." required th:text="${mode == 'playlist' ? prompt : ''}"></textarea></label><button class="button primary" type="submit">Rancang playlist ✦</button></form>
+      <form class="ai-request-form" method="post" th:action="@{/ai}"><input type="hidden" name="mode" value="playlist"><label>Tema playlist<textarea name="prompt" rows="4" placeholder="Contoh: perjalanan malam di kota..." required th:text="${mode == 'playlist' ? prompt : ''}"></textarea></label><button class="button primary ai-submit-button" type="submit">Rancang playlist ✦</button><span class="ai-loading" role="status" aria-live="polite" hidden><span class="loading-spinner" aria-hidden="true"></span>AI sedang menyusun playlist…</span></form>
     </article>
     <article class="ai-card"><div class="ai-card-icon">♫</div><h2>Mood soundscape</h2><p class="muted">Buat komposisi ambient sintetis sesuai mood, langsung diputar di browser.</p>
-      <form method="post" th:action="@{/ai/soundscape}"><label>Suasana untuk soundscape<textarea name="prompt" rows="3" placeholder="Contoh: hujan sore yang damai..." required></textarea></label><button class="button primary" type="submit">Buat soundscape ✦</button></form>
+      <form class="ai-request-form" method="post" th:action="@{/ai/soundscape}"><label>Suasana untuk soundscape<textarea name="prompt" rows="3" placeholder="Contoh: hujan sore yang damai..." required></textarea></label><button class="button primary ai-submit-button" type="submit">Buat soundscape ✦</button><span class="ai-loading" role="status" aria-live="polite" hidden><span class="loading-spinner" aria-hidden="true"></span>AI sedang membuat soundscape…</span></form>
     </article>
   </section>
   <section class="answer-card error-card" th:if="${error != null}"><strong>Belum bisa memproses permintaan</strong><p th:text="${error}"></p></section>
@@ -36,6 +36,7 @@
   <section class="answer-card" th:if="${answer != null}"><div class="row-between"><div><p class="eyebrow">HASIL KURASI</p><h2>Untuk suasana yang kamu cari</h2></div><span class="ai-badge">✦ AI</span></div><div class="answer-text" th:text="${answer}"></div></section>
   <aside class="setup-note" th:if="${answer == null && generatedDraft == null && soundscapeBlueprint == null && error == null && soundscapeError == null}">AI Studio membutuhkan <code>GEMINI_API_KEY</code>. Atur environment variable tersebut sebelum meminta rekomendasi.</aside>
 </main>
+<script th:src="@{/js/ai-loading.js}" defer></script>
 <script th:src="@{/js/soundscape.js}" defer></script>
 </body>
 </html>

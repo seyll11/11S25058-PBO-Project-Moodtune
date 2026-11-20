@@ -4,6 +4,7 @@ import id.moodtune.repository.MoodJournalRepository;
 import id.moodtune.repository.PlaylistRepository;
 import id.moodtune.repository.PlaylistTrackRepository;
 import id.moodtune.repository.SongRepository;
+import id.moodtune.service.AudioLookupService;
 import id.moodtune.service.GeneratedPlaylistDraft;
 import id.moodtune.service.MusicService;
 import org.junit.jupiter.api.Test;
@@ -12,10 +13,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+
+import java.util.List;
+
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.mockito.Mockito.when;
 
 @SpringBootTest(properties = {
         "spring.datasource.url=jdbc:h2:mem:moodtune-test;DB_CLOSE_DELAY=-1",
@@ -30,6 +36,7 @@ class MoodTuneWorkflowTest {
     @Autowired private PlaylistTrackRepository tracks;
     @Autowired private MoodJournalRepository journals;
     @Autowired private MusicService music;
+    @MockitoBean private AudioLookupService audio;
 
     @BeforeEach
     void clearDatabase() {
@@ -111,6 +118,16 @@ class MoodTuneWorkflowTest {
     }
 
     @Test
+    void showsLoadingFeedbackForAiRequests() throws Exception {
+        mvc.perform(get("/ai"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("AI sedang menyiapkan jawaban")))
+                .andExpect(content().string(containsString("AI sedang menyusun playlist")))
+                .andExpect(content().string(containsString("AI sedang membuat soundscape")))
+                .andExpect(content().string(containsString("/js/ai-loading.js")));
+    }
+
+    @Test
     void rejectsInvalidSongInputWithoutSavingIt() throws Exception {
         mvc.perform(post("/songs")
                         .param("title", "Invalid Year")
@@ -120,5 +137,38 @@ class MoodTuneWorkflowTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Tahun rilis minimal 1900.")));
         org.junit.jupiter.api.Assertions.assertEquals(0, songs.count());
+    }
+
+    @Test
+    void showsYouTubePlaybackWhenPreviewServiceIsUnavailable() throws Exception {
+        when(audio.findPreview("Example Song", "Example Artist"))
+                .thenThrow(new org.springframework.web.client.ResourceAccessException("iTunes unavailable"));
+        when(audio.findVideos("Example Song", "Example Artist"))
+                .thenReturn(new AudioLookupService.VideoSearch(
+                        List.of(new AudioLookupService.Video("dQw4w9WgXcQ", "Example Song", "Example Artist")),
+                        null));
+
+        mvc.perform(get("/audio").param("title", "Example Song").param("artist", "Example Artist"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Pratinjau audio tidak dapat dimuat")))
+                .andExpect(content().string(containsString("youtube-play-button")))
+                .andExpect(content().string(containsString("Pratinjau Example Song")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(
+                        containsString("https://www.youtube.com/watch?v="))));
+    }
+
+    @Test
+    void showsPlaybackMessageWhenVideoSearchFailsWithoutRedirecting() throws Exception {
+        when(audio.findPreview("Example Song", "Example Artist"))
+                .thenReturn(new AudioLookupService.Preview(false, null, null, null, null, null,
+                        "No preview"));
+        when(audio.findVideos("Example Song", "Example Artist"))
+                .thenThrow(new org.springframework.web.client.ResourceAccessException("YouTube unavailable"));
+
+        mvc.perform(get("/audio").param("title", "Example Song").param("artist", "Example Artist"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Pencarian video gagal dimuat")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(
+                        containsString("https://www.youtube.com/results?search_query="))));
     }
 }

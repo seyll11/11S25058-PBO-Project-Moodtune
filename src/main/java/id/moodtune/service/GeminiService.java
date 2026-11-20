@@ -20,7 +20,7 @@ public class GeminiService {
 
     public GeminiService(RestClient.Builder builder, ObjectMapper objectMapper,
                          @Value("${moodtune.gemini.api-key:}") String apiKey,
-                         @Value("${moodtune.gemini.model:gemini-2.5-flash}") String model) {
+                         @Value("${moodtune.gemini.model:gemini-3.5-flash-lite}") String model) {
         this.restClient = builder.baseUrl("https://generativelanguage.googleapis.com").build();
         this.objectMapper = objectMapper;
         this.apiKey = apiKey;
@@ -31,10 +31,15 @@ public class GeminiService {
         String context = libraryContext(songs);
         String instruction = switch (mode) {
             case "theme" -> "Jelaskan tema, suasana emosional, motif, dan konteks mendengarkan lagu/permintaan pengguna. Hindari mengutip lirik.";
-            default -> "Berikan rekomendasi musik yang relevan, prioritaskan koleksi pengguna, dan jelaskan alasannya.";
+            default -> "Bertindaklah sebagai kurator musik dan buat tepat 8 rekomendasi lagu nyata yang sesuai dengan suasana/permintaan. "
+                    + "Jangan membatasi rekomendasi pada koleksi pengguna: jika ada lagu koleksi yang relevan, pilih paling banyak 2; "
+                    + "pilih setidaknya 6 lagu baru yang belum ada di koleksi. Jika koleksi kosong atau tidak ada lagu yang cocok, "
+                    + "rekomendasikan 8 lagu baru. Jangan mengulang lagu atau artis; variasikan genre, era, dan negara sesuai konteks "
+                    + "(ikuti permintaan jika pengguna menentukan genre atau wilayah tertentu). Jangan mengarang judul atau artis. "
+                    + "Untuk setiap lagu tulis judul — artis, tandai 'Dari koleksi' atau 'Lagu baru', lalu beri satu alasan singkat.";
         };
         return generate(instruction + "\n\nKonteks koleksi:\n" + context
-                + "\n\nPermintaan pengguna:\n" + prompt, false);
+                + "\n\nPermintaan pengguna:\n" + prompt, false, "recommend".equals(mode) ? 768 : 512);
     }
 
     public GeneratedPlaylistDraft generatePlaylistDraft(String prompt, int requestedCount, List<Song> songs) {
@@ -44,13 +49,16 @@ public class GeminiService {
         int count = Math.max(4, Math.min(12, requestedCount));
         String promptText = "Anda adalah kurator playlist MoodTune. Jawab hanya JSON valid dalam Bahasa Indonesia. "
                 + "Buat playlist berisi tepat " + count + " lagu yang nyata dan cocok untuk tema: " + prompt + ". "
-                + "Utamakan lagu koleksi dengan ID yang sesuai, tetapi boleh menambahkan lagu nyata baru. "
+                + "Jangan membatasi playlist pada koleksi: gunakan paling banyak 2 lagu koleksi yang benar-benar cocok "
+                + "dan isi setidaknya " + Math.max(0, count - 2) + " lagu baru yang nyata dan belum ada di koleksi. "
+                + "Jika tidak ada lagu koleksi yang cocok, isi semuanya dengan lagu baru. Hindari lagu/artis berulang "
+                + "dan variasikan genre atau era sesuai tema. Jangan mengarang lagu. "
                 + "Bentuk JSON: {\"name\":\"...\",\"description\":\"...\",\"moodTag\":\"...\","
                 + "\"coverVariant\":\"focus|rain|morning\",\"tracks\":[{\"source\":\"library|new\","
                 + "\"songId\":1,\"title\":\"...\",\"artist\":\"...\",\"genre\":\"...\","
                 + "\"releaseYear\":2024,\"reason\":\"...\"}]}. "
                 + "Koleksi pengguna: " + libraryContext(songs);
-        String json = generate(promptText, true);
+        String json = generate(promptText, true, 2048);
         GeneratedPlaylistDraft draft;
         try {
             draft = objectMapper.readValue(json, GeneratedPlaylistDraft.class);
@@ -98,7 +106,7 @@ public class GeminiService {
                 + "\"chords\":[{\"name\":\"...\",\"frequencies\":[220,277,330],"
                 + "\"melodyFrequencies\":[440,494,0,392]}]}. Gunakan 4 chord, "
                 + "frekuensi fundamental 80-900 Hz dan nada melodi 100-1200 Hz.";
-        String json = generate(instruction, true);
+        String json = generate(instruction, true, 768);
         SoundscapeBlueprint blueprint;
         try {
             blueprint = objectMapper.readValue(json, SoundscapeBlueprint.class);
@@ -139,13 +147,13 @@ public class GeminiService {
                 .reduce((left, right) -> left + "; " + right).orElse("");
     }
 
-    private String generate(String prompt, boolean json) {
+    private String generate(String prompt, boolean json, int maxOutputTokens) {
         if (apiKey == null || apiKey.isBlank()) {
             throw new IllegalStateException("Fitur AI belum aktif. Atur GEMINI_API_KEY sebelum menjalankan aplikasi.");
         }
         Map<String, Object> generationConfig = json
-                ? Map.of("responseMimeType", "application/json")
-                : Map.of();
+                ? Map.of("responseMimeType", "application/json", "maxOutputTokens", maxOutputTokens)
+                : Map.of("maxOutputTokens", maxOutputTokens);
         Map<String, Object> request = Map.of(
                 "contents", List.of(Map.of("parts", List.of(Map.of("text",
                         "Anda adalah kurator musik MoodTune. Jawab dalam Bahasa Indonesia.\n" + prompt)))),
