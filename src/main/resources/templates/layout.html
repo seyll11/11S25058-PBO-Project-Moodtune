@@ -12,8 +12,9 @@
 <body>
 <header class="site-header" th:fragment="header(activeTab)">
   <div class="nav-wrap">
-    <a class="brand" th:href="@{/songs}"><span class="brand-mark">M</span><span>MoodTune<small>music, in your mood</small></span></a>
+    <a class="brand" th:href="@{/}"><span class="brand-mark">M</span><span>MoodTune<small>music, in your mood</small></span></a>
     <nav class="nav-links" aria-label="Navigasi utama">
+      <a th:href="@{/}" th:classappend="${activeTab == 'home'} ? 'active'">Beranda</a>
       <a th:href="@{/songs}" th:classappend="${activeTab == 'songs'} ? 'active'">Koleksi lagu</a>
       <a th:href="@{/playlists}" th:classappend="${activeTab == 'playlists'} ? 'active'">Playlist</a>
       <a th:href="@{/audio}" th:classappend="${activeTab == 'audio'} ? 'active'">Dengarkan</a>
@@ -22,10 +23,35 @@
       <a th:href="@{/journal}" th:classappend="${activeTab == 'journal'} ? 'active'">Jurnal mood</a>
       <a th:href="@{/insights}" th:classappend="${activeTab == 'insights'} ? 'active'">Insights</a>
     </nav>
+    <form class="logout-form" method="post" th:action="@{/logout}">
+      <button class="button small secondary" type="submit">Keluar</button>
+    </form>
   </div>
   <div class="notice-wrap" th:if="${notice != null}">
     <div class="notice" role="status" th:text="${notice}"></div>
   </div>
+  <aside id="mini-player" class="mini-player" hidden aria-label="Mini-player MoodTune">
+    <div class="mini-player-info">
+      <span class="mini-player-art" aria-hidden="true">♫</span>
+      <div class="mini-player-track">
+        <strong id="mini-player-title">Belum ada lagu diputar</strong>
+        <span id="mini-player-artist">Pilih lagu untuk mulai mendengarkan</span>
+        <span id="mini-player-status" class="mini-player-status" role="status" aria-live="polite"></span>
+      </div>
+      <button id="mini-player-close" class="icon-button mini-player-close" type="button" aria-label="Tutup mini-player">×</button>
+    </div>
+    <div id="mini-player-audio-wrap" class="mini-player-audio" hidden>
+      <audio id="mini-player-audio" controls preload="metadata"></audio>
+    </div>
+    <div id="mini-player-video-wrap" class="mini-player-video" hidden>
+      <div class="mini-player-video-frame">
+        <iframe id="mini-player-video" title="Pemutar video YouTube"
+            allow="autoplay; encrypted-media; picture-in-picture; web-share" allowfullscreen
+            referrerpolicy="strict-origin-when-cross-origin"></iframe>
+      </div>
+    </div>
+  </aside>
+  <script defer th:src="@{/js/mini-player.js}"></script>
 </header>
 </body>
 </html>

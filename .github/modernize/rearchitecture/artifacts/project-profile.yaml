@@ -1,0 +1,43 @@
+project:
+  scope_path: "."
+  loc: 11271
+  languages: [Java, JavaScript/TypeScript]
+  git: true
+  structure:
+    src: "Spring Boot application source and templates"
+    data: "Application data"
+    .github: "Repository coordination and modernization metadata"
+    root: "Maven build and legacy React/TypeScript app entry points"
+  notes: "Small mixed-language repository; requested work is limited to the Java MoodTune application and must leave the unrelated legacy React/TypeScript app unchanged."
+
+assessment:
+  change_type: upgrade
+  rationale: |
+    The request is an in-place architectural refactor that preserves the existing Spring MVC, Thymeleaf, Spring Data JPA, and H2/PostgreSQL stack. The available change taxonomy has no refactor category, so upgrade is used as the closest same-stack, in-place classification; no framework or persistence migration is requested.
+  transformations:
+    - fromStack: "Spring MVC + Thymeleaf + Spring Data JPA"
+      fromStackVersion: "current project versions"
+      toStack: "Spring MVC + Thymeleaf + Spring Data JPA with Clean Architecture boundaries"
+      toStackVersion: "preserve current versions"
+  grouping_needed: false
+  deep_planning: undecided
+
+progress_sync:
+  run_id: "2abd2bff-56b0-4a9e-88a4-c1e09adcf786"
+  grouping_mode: none
+  execution_mode: pending
+  plan_start_time: "2026-11-23T03:23:26Z"
+  plan_completed_time: "2026-11-23T03:28:27Z"
+  execution_start_time: ""
+  execution_completed_time: ""
+  validation_start_time: ""
+  validation_completed_time: ""
+  total_phases: 6
+  completed_phases: 0
+  total_modules: 1
+  completed_modules: 0
+  total_tasks: 7
+  completed_tasks: 0
+  total_commits: 6
+  build_verified: false
+  test_verified: false

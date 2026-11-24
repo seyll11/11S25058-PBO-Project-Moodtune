@@ -1,12 +1,15 @@
 package id.moodtune.web;
 
-import id.moodtune.repository.MoodJournalRepository;
-import id.moodtune.repository.PlaylistRepository;
-import id.moodtune.repository.PlaylistTrackRepository;
-import id.moodtune.repository.SongRepository;
-import id.moodtune.service.AudioLookupService;
-import id.moodtune.service.GeneratedPlaylistDraft;
-import id.moodtune.service.MusicService;
+import id.moodtune.adapter.persistence.repository.MoodJournalRepository;
+import id.moodtune.adapter.persistence.repository.PlaylistRepository;
+import id.moodtune.adapter.persistence.repository.PlaylistTrackRepository;
+import id.moodtune.adapter.persistence.repository.SongRepository;
+import id.moodtune.usecase.dto.GeneratedPlaylistDraft;
+import id.moodtune.usecase.port.AudioSearchPort;
+import id.moodtune.usecase.port.AudioSearchPort.Preview;
+import id.moodtune.usecase.port.AudioSearchPort.Video;
+import id.moodtune.usecase.port.AudioSearchPort.VideoSearch;
+import id.moodtune.usecase.MusicService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,9 +29,10 @@ import static org.mockito.Mockito.when;
 @SpringBootTest(properties = {
         "spring.datasource.url=jdbc:h2:mem:moodtune-test;DB_CLOSE_DELAY=-1",
         "spring.jpa.hibernate.ddl-auto=create-drop",
-        "moodtune.gemini.api-key="
+        "moodtune.gemini.api-key=",
+        "moodtune.admin.password=test-password"
 })
-@AutoConfigureMockMvc
+@AutoConfigureMockMvc(addFilters = false)
 class MoodTuneWorkflowTest {
     @Autowired private MockMvc mvc;
     @Autowired private SongRepository songs;
@@ -36,7 +40,7 @@ class MoodTuneWorkflowTest {
     @Autowired private PlaylistTrackRepository tracks;
     @Autowired private MoodJournalRepository journals;
     @Autowired private MusicService music;
-    @MockitoBean private AudioLookupService audio;
+    @MockitoBean private AudioSearchPort audio;
 
     @BeforeEach
     void clearDatabase() {
@@ -128,6 +132,50 @@ class MoodTuneWorkflowTest {
     }
 
     @Test
+    void showsMoodDashboardAndUsesMoodPresetInAiStudio() throws Exception {
+        mvc.perform(get("/"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Musik yang mengerti suasana hatimu")))
+                .andExpect(content().string(containsString("Apa yang kamu rasakan?")))
+                .andExpect(content().string(containsString("Mini-player MoodTune")))
+                .andExpect(content().string(containsString("/js/mini-player.js")));
+
+        mvc.perform(get("/ai").param("mood", "galau"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Aku sedang merasa galau")));
+    }
+
+    @Test
+    void rendersHomeAndPlaylistListWhenPlaylistHasTracks() throws Exception {
+        mvc.perform(post("/songs")
+                        .param("title", "Dashboard Track")
+                        .param("artist", "Test Artist")
+                        .param("genre", "Pop")
+                        .param("releaseYear", "2024"))
+                .andExpect(status().is3xxRedirection());
+        var song = songs.findAll().get(0);
+
+        mvc.perform(post("/playlists")
+                        .param("name", "Dashboard Mix")
+                        .param("moodTag", "Focus")
+                        .param("coverVariant", "focus"))
+                .andExpect(status().is3xxRedirection());
+        var playlist = playlists.findAll().get(0);
+        mvc.perform(post("/playlists/{id}/tracks", playlist.getId())
+                        .param("songId", song.getId().toString()))
+                .andExpect(status().is3xxRedirection());
+
+        mvc.perform(get("/"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Dashboard Mix")))
+                .andExpect(content().string(containsString("Dashboard Track")));
+        mvc.perform(get("/playlists"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Dashboard Mix")))
+                .andExpect(content().string(containsString("1 lagu")));
+    }
+
+    @Test
     void rejectsInvalidSongInputWithoutSavingIt() throws Exception {
         mvc.perform(post("/songs")
                         .param("title", "Invalid Year")
@@ -144,8 +192,8 @@ class MoodTuneWorkflowTest {
         when(audio.findPreview("Example Song", "Example Artist"))
                 .thenThrow(new org.springframework.web.client.ResourceAccessException("iTunes unavailable"));
         when(audio.findVideos("Example Song", "Example Artist"))
-                .thenReturn(new AudioLookupService.VideoSearch(
-                        List.of(new AudioLookupService.Video("dQw4w9WgXcQ", "Example Song", "Example Artist")),
+                .thenReturn(new VideoSearch(
+                        List.of(new Video("dQw4w9WgXcQ", "Example Song", "Example Artist")),
                         null));
 
         mvc.perform(get("/audio").param("title", "Example Song").param("artist", "Example Artist"))
@@ -160,7 +208,7 @@ class MoodTuneWorkflowTest {
     @Test
     void showsPlaybackMessageWhenVideoSearchFailsWithoutRedirecting() throws Exception {
         when(audio.findPreview("Example Song", "Example Artist"))
-                .thenReturn(new AudioLookupService.Preview(false, null, null, null, null, null,
+                .thenReturn(new Preview(false, null, null, null, null, null,
                         "No preview"));
         when(audio.findVideos("Example Song", "Example Artist"))
                 .thenThrow(new org.springframework.web.client.ResourceAccessException("YouTube unavailable"));

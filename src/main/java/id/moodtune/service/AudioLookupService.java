@@ -2,6 +2,10 @@ package id.moodtune.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import id.moodtune.usecase.port.AudioSearchPort;
+import id.moodtune.usecase.port.AudioSearchPort.Preview;
+import id.moodtune.usecase.port.AudioSearchPort.Video;
+import id.moodtune.usecase.port.AudioSearchPort.VideoSearch;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
@@ -15,12 +19,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Service
-public class AudioLookupService {
-    public record Preview(boolean found, String previewUrl, String trackName, String artistName,
-                          String collectionName, String trackViewUrl, String message) {}
-    public record Video(String videoId, String title, String channel) {}
-    public record VideoSearch(List<Video> videos, String message) {}
-
+public class AudioLookupService implements AudioSearchPort {
     private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
             + "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
     private static final Pattern INITIAL_DATA = Pattern.compile(
@@ -38,6 +37,7 @@ public class AudioLookupService {
         this.youtubeApiKey = youtubeApiKey;
     }
 
+    @Override
     public Preview findPreview(String title, String artist) {
         JsonNode response = restClient.get()
                 .uri(uri -> uri.scheme("https").host("itunes.apple.com").path("/search")
@@ -66,6 +66,7 @@ public class AudioLookupService {
                 best.path("collectionName").asText(""), best.path("trackViewUrl").asText(""), null);
     }
 
+    @Override
     public VideoSearch findVideos(String title, String artist) {
         String searchTerm = (title + " " + artist + " official audio").trim();
         try {

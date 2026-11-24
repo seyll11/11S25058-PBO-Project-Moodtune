@@ -2,19 +2,19 @@ package id.moodtune.web;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import id.moodtune.domain.exception.DomainNotFoundException;
 import id.moodtune.model.MoodJournal;
 import id.moodtune.model.Playlist;
 import id.moodtune.model.Song;
-import id.moodtune.service.AudioLookupService;
-import id.moodtune.service.GeneratedPlaylistDraft;
-import id.moodtune.service.SoundscapeBlueprint;
-import id.moodtune.repository.SongRepository;
-import id.moodtune.service.GeminiService;
-import id.moodtune.service.MusicService;
+import id.moodtune.usecase.dto.GeneratedPlaylistDraft;
+import id.moodtune.usecase.dto.SoundscapeBlueprint;
+import id.moodtune.usecase.port.AudioSearchPort;
+import id.moodtune.usecase.port.AudioSearchPort.VideoSearch;
+import id.moodtune.usecase.port.MusicAiPort;
+import id.moodtune.usecase.MusicService;
 import id.moodtune.web.form.JournalForm;
 import id.moodtune.web.form.PlaylistForm;
 import id.moodtune.web.form.SongForm;
-import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -30,23 +30,24 @@ import java.util.List;
 @SessionAttributes("generatedDraft")
 public class MoodTuneController {
     private final MusicService music;
-    private final SongRepository songs;
-    private final GeminiService gemini;
-    private final AudioLookupService audio;
+    private final MusicAiPort gemini;
+    private final AudioSearchPort audio;
     private final ObjectMapper objectMapper;
 
-    public MoodTuneController(MusicService music, SongRepository songs, GeminiService gemini,
-                              AudioLookupService audio, ObjectMapper objectMapper) {
+    public MoodTuneController(MusicService music, MusicAiPort gemini,
+                              AudioSearchPort audio, ObjectMapper objectMapper) {
         this.music = music;
-        this.songs = songs;
         this.gemini = gemini;
         this.audio = audio;
         this.objectMapper = objectMapper;
     }
 
     @GetMapping("/")
-    public String home() {
-        return "redirect:/songs";
+    public String home(Model model) {
+        model.addAttribute("songs", music.songs());
+        model.addAttribute("playlists", music.playlists());
+        model.addAttribute("activeTab", "home");
+        return "home";
     }
 
     @GetMapping("/songs")
@@ -267,10 +268,16 @@ public class MoodTuneController {
     }
 
     @GetMapping("/ai")
-    public String aiPage(Model model) {
+    public String aiPage(@RequestParam(required = false) String mood, Model model) {
         model.addAttribute("activeTab", "ai");
         model.addAttribute("mode", "recommend");
-        model.addAttribute("prompt", "");
+        model.addAttribute("prompt", switch (mood == null ? "" : mood) {
+            case "galau" -> "Aku sedang merasa galau. Rekomendasikan lagu yang bisa menemani dan membantu menenangkan suasana hati.";
+            case "semangat" -> "Aku ingin merasa lebih semangat. Rekomendasikan lagu yang energik untuk menemani aktivitasku.";
+            case "santai" -> "Aku ingin bersantai. Rekomendasikan lagu yang lembut dan menenangkan untuk menemani waktu istirahat.";
+            case "fokus" -> "Aku ingin fokus belajar atau bekerja. Rekomendasikan musik yang tidak mengganggu konsentrasi.";
+            default -> "";
+        });
         return "ai";
     }
 
@@ -371,7 +378,7 @@ public class MoodTuneController {
             try {
                 model.addAttribute("videos", audio.findVideos(title.trim(), artistName));
             } catch (org.springframework.web.client.RestClientException exception) {
-                model.addAttribute("videos", new AudioLookupService.VideoSearch(List.of(),
+                model.addAttribute("videos", new VideoSearch(List.of(),
                         "Pencarian video gagal dimuat. Periksa koneksi internet lalu coba lagi."));
             }
         }
@@ -401,16 +408,15 @@ public class MoodTuneController {
         return "theme";
     }
 
-    @ExceptionHandler(EntityNotFoundException.class)
-    public String notFound(EntityNotFoundException exception, Model model) {
+    @ExceptionHandler(DomainNotFoundException.class)
+    public String notFound(DomainNotFoundException exception, Model model) {
         model.addAttribute("message", exception.getMessage());
         model.addAttribute("activeTab", "");
         return "not-found";
     }
 
     private Song linkedSong(Long id) {
-        return id == null ? null : songs.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Lagu yang ditautkan tidak ditemukan."));
+        return id == null ? null : music.song(id);
     }
 
     static String geminiError(RestClientException exception) {

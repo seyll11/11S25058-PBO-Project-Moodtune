@@ -1,40 +1,28 @@
 package id.moodtune.model;
 
-import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "moodtune_playlist_songs", uniqueConstraints = @UniqueConstraint(columnNames = {"playlist_id", "song_id"}))
 public class PlaylistTrack {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "playlist_id", nullable = false)
-    private Playlist playlist;
-
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "song_id", nullable = false)
-    private Song song;
-
-    @Column(nullable = false)
+    private final Long id;
+    private final Long playlistId;
+    private final Song song;
     private int position;
+    private final LocalDateTime addedAt;
 
-    @Column(name = "added_at", nullable = false)
-    private LocalDateTime addedAt = LocalDateTime.now();
-
-    protected PlaylistTrack() {
+    public PlaylistTrack(Long playlistId, Song song, int position) {
+        this(null, playlistId, song, position, LocalDateTime.now());
     }
 
-    public PlaylistTrack(Playlist playlist, Song song, int position) {
-        this.playlist = playlist;
+    public PlaylistTrack(Long id, Long playlistId, Song song, int position, LocalDateTime addedAt) {
+        this.id = id;
+        this.playlistId = playlistId;
         this.song = song;
         this.position = position;
+        this.addedAt = addedAt;
     }
 
     public Long getId() { return id; }
-    public Playlist getPlaylist() { return playlist; }
+    public Long getPlaylistId() { return playlistId; }
     public Song getSong() { return song; }
     public int getPosition() { return position; }
     public LocalDateTime getAddedAt() { return addedAt; }

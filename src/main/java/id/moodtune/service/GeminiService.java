@@ -4,6 +4,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import id.moodtune.model.Playlist;
 import id.moodtune.model.Song;
+import id.moodtune.usecase.dto.GeneratedPlaylistDraft;
+import id.moodtune.usecase.dto.SoundscapeBlueprint;
+import id.moodtune.usecase.port.MusicAiPort;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -12,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-public class GeminiService {
+public class GeminiService implements MusicAiPort {
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
     private final String apiKey;
@@ -27,6 +30,7 @@ public class GeminiService {
         this.model = model;
     }
 
+    @Override
     public String answer(String mode, String prompt, List<Song> songs) {
         String context = libraryContext(songs);
         String instruction = switch (mode) {
@@ -42,6 +46,7 @@ public class GeminiService {
                 + "\n\nPermintaan pengguna:\n" + prompt, false, "recommend".equals(mode) ? 768 : 512);
     }
 
+    @Override
     public GeneratedPlaylistDraft generatePlaylistDraft(String prompt, int requestedCount, List<Song> songs) {
         if (apiKey == null || apiKey.isBlank()) {
             throw new IllegalStateException("Fitur AI belum aktif. Atur GEMINI_API_KEY sebelum menjalankan aplikasi.");
@@ -99,6 +104,7 @@ public class GeminiService {
                 Playlist.validCover(draft.coverVariant()), tracks);
     }
 
+    @Override
     public SoundscapeBlueprint composeSoundscape(String prompt) {
         String instruction = "Buat blueprint soundscape instrumental yang menenangkan untuk suasana: " + prompt
                 + ". Jawab hanya JSON valid berbentuk {\"title\":\"...\",\"moodDescription\":\"...\","

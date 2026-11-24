@@ -16,7 +16,10 @@
       <p class="eyebrow">PRATINJAU RESMI</p>
       <div th:if="${preview.found}">
         <h2 th:text="${preview.trackName}">Judul lagu</h2><p class="muted" th:text="${preview.artistName}">Artis</p>
-        <audio controls preload="none" th:src="${preview.previewUrl}">Browser tidak mendukung pemutar audio.</audio>
+        <button class="button primary mini-audio-play" type="button"
+            th:attr="data-audio-url=${preview.previewUrl},data-track-title=${preview.trackName},data-track-artist=${preview.artistName}">
+          ▶ Putar pratinjau
+        </button>
         <a class="external-link" th:if="${!#strings.isEmpty(preview.trackViewUrl)}" th:href="${preview.trackViewUrl}" target="_blank" rel="noopener noreferrer">Buka lagu di Apple Music ↗</a>
       </div>
       <p class="empty-inline" th:unless="${preview.found}" th:text="${preview.message}">Pratinjau tidak ditemukan.</p>
@@ -25,12 +28,6 @@
   <section class="panel audio-videos" th:if="${videos != null}">
     <div class="row-between"><div><p class="eyebrow">VIDEO</p><h2>Pratinjau YouTube</h2><p class="muted">Putar video langsung di halaman ini.</p></div></div>
     <p class="muted" th:if="${videos.message != null}" th:text="${videos.message}"></p>
-    <section id="youtube-player-panel" class="youtube-player-panel" hidden aria-label="Pemutar YouTube">
-      <div class="row-between"><strong id="youtube-player-title">Video YouTube</strong><button id="youtube-player-close" class="button small secondary" type="button">Tutup</button></div>
-      <div class="youtube-frame"><iframe id="youtube-player-frame" title="Pemutar video YouTube"
-          allow="autoplay; encrypted-media; picture-in-picture; web-share" allowfullscreen
-          referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
-    </section>
     <ul class="video-list" th:if="${!#lists.isEmpty(videos.videos)}">
       <li th:each="video : ${videos.videos}">
         <button class="video-preview youtube-play-button" type="button"
@@ -54,6 +51,5 @@
     <div class="audio-song-list"><a th:each="song : ${songs}" th:href="@{/audio(title=${song.title},artist=${song.artist})}"><span><strong th:text="${song.title}">Judul</strong><small th:text="${song.artist}">Artis</small></span><span class="play-icon">▶</span></a></div>
   </section>
 </main>
-<script defer th:src="@{/js/youtube-player.js}"></script>
 </body>
 </html>

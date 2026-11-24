@@ -1,6 +1,7 @@
 package id.moodtune.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import id.moodtune.usecase.dto.GeneratedPlaylistDraft;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;

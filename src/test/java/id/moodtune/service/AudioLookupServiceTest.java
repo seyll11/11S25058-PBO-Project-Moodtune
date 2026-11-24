@@ -1,6 +1,7 @@
 package id.moodtune.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import id.moodtune.usecase.port.AudioSearchPort.Video;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -21,7 +22,7 @@ class AudioLookupServiceTest {
                 }}};</script>
                 """;
 
-        List<AudioLookupService.Video> videos = AudioLookupService.parsePublicVideos(html, objectMapper);
+        List<Video> videos = AudioLookupService.parsePublicVideos(html, objectMapper);
 
         assertEquals(1, videos.size());
         assertEquals("dQw4w9WgXcQ", videos.get(0).videoId());

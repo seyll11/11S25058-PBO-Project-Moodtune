@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="id" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Beranda')}"></head>
+<body>
+<div th:replace="~{layout :: header('home')}"></div>
+<main class="container home-page">
+  <section class="home-hero">
+    <div class="home-hero-copy">
+      <p class="eyebrow">RUANG MUSIKMU</p>
+      <h1>Musik yang mengerti suasana hatimu.</h1>
+      <p>Temukan lagu untuk setiap momen, simpan yang kamu suka, dan biarkan MoodTune menemani harimu.</p>
+      <div class="home-hero-actions">
+        <a class="button home-hero-button" th:href="@{/audio}">♫ Cari musik</a>
+        <a class="button home-hero-link" th:href="@{/ai}">Jelajahi dengan AI <span aria-hidden="true">↗</span></a>
+      </div>
+    </div>
+    <div class="home-hero-art" aria-hidden="true">
+      <span class="hero-orbit hero-orbit-one"></span><span class="hero-orbit hero-orbit-two"></span>
+      <span class="hero-disc"><span>♫</span></span>
+      <span class="hero-spark hero-spark-one">✦</span><span class="hero-spark hero-spark-two">♪</span>
+    </div>
+    <div class="home-stats">
+      <div><strong th:text="${songs.size()}">0</strong><span>lagu tersimpan</span></div>
+      <div><strong th:text="${playlists.size()}">0</strong><span>playlist dibuat</span></div>
+      <a th:href="@{/journal}"><strong>♥</strong><span>jurnal mood</span></a>
+    </div>
+  </section>
+
+  <section class="content-section home-moods">
+    <div class="section-heading row-between">
+      <div><p class="eyebrow">MULAI DARI SINI</p><h2>Apa yang kamu rasakan?</h2><p class="muted">Pilih mood, AI akan bantu mencari soundtrack yang pas.</p></div>
+    </div>
+    <div class="mood-grid">
+      <a class="mood-card mood-galau" th:href="@{/ai(mood='galau')}"><span class="mood-emoji" aria-hidden="true">☁</span><strong>Butuh ditemani</strong><span>Lagu untuk hati yang sedang berat</span><span class="mood-arrow" aria-hidden="true">↗</span></a>
+      <a class="mood-card mood-semangat" th:href="@{/ai(mood='semangat')}"><span class="mood-emoji" aria-hidden="true">✦</span><strong>Tambah semangat</strong><span>Energi baru untuk harimu</span><span class="mood-arrow" aria-hidden="true">↗</span></a>
+      <a class="mood-card mood-santai" th:href="@{/ai(mood='santai')}"><span class="mood-emoji" aria-hidden="true">☾</span><strong>Ingin bersantai</strong><span>Pelankan tempo dan nikmati momen</span><span class="mood-arrow" aria-hidden="true">↗</span></a>
+      <a class="mood-card mood-fokus" th:href="@{/ai(mood='fokus')}"><span class="mood-emoji" aria-hidden="true">◎</span><strong>Perlu fokus</strong><span>Temani belajar dan bekerja</span><span class="mood-arrow" aria-hidden="true">↗</span></a>
+    </div>
+  </section>
+
+  <section class="content-section home-library-section" th:if="${!#lists.isEmpty(songs)}">
+    <div class="section-heading row-between">
+      <div><p class="eyebrow">BARU DISIMPAN</p><h2>Koleksi lagumu</h2></div>
+      <a class="text-link" th:href="@{/songs}">Lihat semua <span aria-hidden="true">→</span></a>
+    </div>
+    <div class="home-song-grid">
+      <article class="home-song-card" th:each="song, item : ${songs}" th:if="${item.index < 3}">
+        <span class="home-song-art" aria-hidden="true">♫</span>
+        <div class="home-song-info"><strong th:text="${song.title}">Judul lagu</strong><span th:text="${song.artist}">Artis</span></div>
+        <a class="home-song-play" th:href="@{/audio(title=${song.title},artist=${song.artist})}" th:attr="aria-label=|Cari ${song.title} oleh ${song.artist}|" title="Cari lagu">▶</a>
+      </article>
+    </div>
+  </section>
+
+  <section class="content-section home-library-section" th:if="${!#lists.isEmpty(playlists)}">
+    <div class="section-heading row-between">
+      <div><p class="eyebrow">MIX PILIHANMU</p><h2>Playlist</h2></div>
+      <a class="text-link" th:href="@{/playlists}">Lihat semua <span aria-hidden="true">→</span></a>
+    </div>
+    <div class="home-playlist-grid">
+      <a class="home-playlist-card" th:each="playlist, item : ${playlists}" th:if="${item.index < 3}" th:href="@{/playlists/{id}(id=${playlist.id})}">
+        <span class="home-playlist-icon" aria-hidden="true">♫</span>
+        <span class="home-playlist-info"><strong th:text="${playlist.name}">Nama playlist</strong><small th:text="${playlist.tracks.size()} + ' lagu'">0 lagu</small></span>
+        <span class="home-playlist-arrow" aria-hidden="true">↗</span>
+      </a>
+    </div>
+  </section>
+
+  <section class="home-empty-library" th:if="${#lists.isEmpty(songs) && #lists.isEmpty(playlists)}">
+    <span aria-hidden="true">♫</span><div><strong>Mulai bangun dunia musikmu</strong><p>Simpan lagu atau buat playlist pertamamu, semuanya akan muncul di sini.</p></div>
+    <a class="button secondary" th:href="@{/songs/new}">Tambah lagu</a>
+  </section>
+</main>
+</body>
+</html>

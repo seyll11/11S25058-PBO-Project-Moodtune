@@ -1,4 +1,4 @@
-package id.moodtune.service;
+package id.moodtune.usecase.dto;
 
 import java.util.List;
 

@@ -1,52 +1,34 @@
 package id.moodtune.model;
 
-import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-@Entity
-@Table(name = "moodtune_playlists")
 public class Playlist {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @NotBlank
-    @Size(max = 160)
-    @Column(nullable = false)
+    private final Long id;
     private String name;
-
-    @Size(max = 1000)
     private String description;
-
-    @Size(max = 80)
-    @Column(name = "mood_tag")
     private String moodTag;
-
-    @Column(name = "cover_variant", nullable = false)
-    private String coverVariant = "focus";
-
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
-
-    @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt = LocalDateTime.now();
-
-    @OneToMany(mappedBy = "playlist", cascade = CascadeType.ALL, orphanRemoval = true)
-    @OrderBy("position ASC, id ASC")
-    private List<PlaylistTrack> tracks = new ArrayList<>();
-
-    protected Playlist() {
-    }
+    private String coverVariant;
+    private final LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    private final List<PlaylistTrack> tracks;
 
     public Playlist(String name, String description, String moodTag, String coverVariant) {
+        this(null, name, description, moodTag, validCover(coverVariant), LocalDateTime.now(),
+                LocalDateTime.now(), List.of());
+    }
+
+    public Playlist(Long id, String name, String description, String moodTag, String coverVariant,
+                    LocalDateTime createdAt, LocalDateTime updatedAt, List<PlaylistTrack> tracks) {
+        this.id = id;
         this.name = name;
         this.description = description;
         this.moodTag = moodTag;
         this.coverVariant = validCover(coverVariant);
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+        this.tracks = new ArrayList<>(tracks);
     }
 
     public static String validCover(String value) {
